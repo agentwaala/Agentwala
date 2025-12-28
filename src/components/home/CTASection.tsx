@@ -1,53 +1,72 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-
-const benefits = [
-  "Get verified & stand out",
-  "Receive quality leads",
-  "Grow your client base",
-  "Flexible working hours",
-];
 
 export function CTASection() {
   return (
-    <section className="py-20 sm:py-28 relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0 dark:block hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
-      </div>
-      <div className="absolute inset-0 dark:hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl" />
-      </div>
+    <section className="py-24 sm:py-32 relative overflow-hidden">
+      <div className="container mx-auto px-4">
+        <div className="relative">
+          {/* Background Card */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-accent rounded-[2rem] sm:rounded-[3rem]" />
+          
+          {/* Pattern overlay */}
+          <div className="absolute inset-0 opacity-10 rounded-[2rem] sm:rounded-[3rem] overflow-hidden">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+              backgroundSize: '32px 32px'
+            }} />
+          </div>
 
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-4xl mx-auto">
-          <div className="glass-card rounded-3xl p-8 sm:p-12 text-center">
-            {/* Heading */}
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-              Ready to <span className="text-primary">Join</span> as an Agent?
+          {/* Glow effects */}
+          <div className="absolute -top-20 -right-20 w-[300px] h-[300px] bg-white/20 rounded-full blur-[80px]" />
+          <div className="absolute -bottom-20 -left-20 w-[200px] h-[200px] bg-white/10 rounded-full blur-[60px]" />
+
+          {/* Content */}
+          <div className="relative px-8 py-16 sm:px-16 sm:py-24 text-center">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-foreground mb-6 leading-tight">
+              Ready to Share Your
+              <br />
+              Expertise with the World?
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Share your expertise, connect with clients, and grow your professional network on Agentwaala.
+            <p className="text-primary-foreground/80 text-lg mb-10 max-w-2xl mx-auto">
+              Join our network of verified agents and connect with clients looking for your skills.
             </p>
 
-            {/* Benefits Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
-              {benefits.map((benefit) => (
-                <div key={benefit} className="flex items-center gap-2 justify-center sm:justify-start">
-                  <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
-                  <span className="text-sm">{benefit}</span>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link to="/become-agent">
+                <Button 
+                  size="lg" 
+                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 h-14 px-10 text-base font-semibold shadow-xl"
+                >
+                  Become an Agent
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link to="/agents">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 h-14 px-10 text-base"
+                >
+                  Browse Agents
+                </Button>
+              </Link>
+            </div>
+
+            {/* Trust indicators */}
+            <div className="flex flex-wrap justify-center gap-8 mt-12 pt-10 border-t border-primary-foreground/20">
+              {[
+                { label: "No upfront fees", icon: "💰" },
+                { label: "Verified profiles", icon: "✓" },
+                { label: "Quality leads", icon: "📈" },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-2 text-primary-foreground/80">
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="text-sm font-medium">{item.label}</span>
                 </div>
               ))}
             </div>
-
-            {/* CTA Button */}
-            <Link to="/become-agent">
-              <Button size="lg" className="neon-glow text-base px-8 h-12">
-                Apply Now
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
           </div>
         </div>
       </div>
