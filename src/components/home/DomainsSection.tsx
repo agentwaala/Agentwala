@@ -8,120 +8,123 @@ import {
   Briefcase,
   Heart,
   Scale,
-  ArrowRight
+  ArrowUpRight
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const domains = [
   { 
     name: "Real Estate", 
     icon: Building2, 
-    description: "Property experts & brokers",
     agents: 85,
-    color: "from-emerald-500/20 to-teal-500/20"
+    gradient: "from-emerald-500 to-teal-600"
   },
   { 
     name: "Tourism", 
     icon: Plane, 
-    description: "Travel & hospitality guides",
     agents: 62,
-    color: "from-blue-500/20 to-cyan-500/20"
+    gradient: "from-blue-500 to-cyan-600"
   },
   { 
     name: "PCs & Tech", 
     icon: Monitor, 
-    description: "Tech consultants & support",
     agents: 124,
-    color: "from-violet-500/20 to-purple-500/20"
+    gradient: "from-violet-500 to-purple-600"
   },
   { 
     name: "Fashion", 
     icon: Shirt, 
-    description: "Style & clothing experts",
     agents: 47,
-    color: "from-pink-500/20 to-rose-500/20"
+    gradient: "from-pink-500 to-rose-600"
   },
   { 
     name: "Education", 
     icon: GraduationCap, 
-    description: "Tutors & career counselors",
     agents: 93,
-    color: "from-amber-500/20 to-orange-500/20"
+    gradient: "from-amber-500 to-orange-600"
   },
   { 
     name: "Business", 
     icon: Briefcase, 
-    description: "Consultants & advisors",
     agents: 78,
-    color: "from-slate-500/20 to-zinc-500/20"
+    gradient: "from-slate-400 to-zinc-500"
   },
   { 
     name: "Healthcare", 
     icon: Heart, 
-    description: "Health & wellness experts",
     agents: 56,
-    color: "from-red-500/20 to-rose-500/20"
+    gradient: "from-red-500 to-rose-600"
   },
   { 
     name: "Legal", 
     icon: Scale, 
-    description: "Legal advisors & consultants",
     agents: 41,
-    color: "from-indigo-500/20 to-blue-500/20"
+    gradient: "from-indigo-500 to-blue-600"
   },
 ];
 
 export function DomainsSection() {
   return (
-    <section className="py-20 sm:py-28 relative">
-      <div className="container mx-auto px-4">
+    <section className="py-24 sm:py-32 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 rounded-full blur-[100px] dark:bg-primary/10" />
+      </div>
+
+      <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Explore <span className="text-primary">Domains</span>
+        <div className="max-w-2xl mb-16">
+          <span className="text-primary font-semibold text-sm tracking-wider uppercase mb-3 block">
+            Browse Categories
+          </span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+            Find Experts Across
+            <br />
+            <span className="text-muted-foreground">Every Domain</span>
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Find specialized agents across various industries, each verified and ready to help.
+          <p className="text-muted-foreground text-lg">
+            Verified professionals ready to help you succeed.
           </p>
         </div>
 
-        {/* Domain Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {/* Bento-style Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {domains.map((domain, index) => (
             <Link
               key={domain.name}
               to={`/agents?domain=${domain.name.toLowerCase().replace(/\s+/g, '-')}`}
-              className="group"
-              style={{ animationDelay: `${index * 0.05}s` }}
+              className={`group relative overflow-hidden rounded-2xl transition-all duration-500 hover:scale-[1.02] ${
+                index === 0 || index === 7 ? 'md:col-span-2 md:row-span-2' : ''
+              }`}
             >
-              <div className="glass-card rounded-2xl p-6 h-full hover-lift hover:border-primary/50 dark:hover:shadow-lg dark:hover:shadow-primary/10 transition-all duration-300">
-                {/* Icon */}
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${domain.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <domain.icon className="h-6 w-6 text-primary" />
+              {/* Background */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${domain.gradient} opacity-90 group-hover:opacity-100 transition-opacity`} />
+              
+              {/* Overlay pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute inset-0" style={{
+                  backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                  backgroundSize: '24px 24px'
+                }} />
+              </div>
+
+              {/* Content */}
+              <div className={`relative p-6 sm:p-8 h-full flex flex-col justify-between ${
+                index === 0 || index === 7 ? 'min-h-[280px] md:min-h-[340px]' : 'min-h-[160px] sm:min-h-[180px]'
+              }`}>
+                <div className="flex items-start justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <domain.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <ArrowUpRight className="h-5 w-5 text-white/60 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
                 </div>
                 
-                {/* Content */}
-                <h3 className="font-semibold text-lg mb-1">{domain.name}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{domain.description}</p>
-                
-                {/* Agent Count */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{domain.agents} agents</span>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                <div>
+                  <h3 className="font-bold text-white text-xl sm:text-2xl mb-1">{domain.name}</h3>
+                  <p className="text-white/70 text-sm">{domain.agents} verified agents</p>
                 </div>
               </div>
             </Link>
           ))}
-        </div>
-
-        {/* View All Button */}
-        <div className="text-center mt-12">
-          <Link to="/domains">
-            <Button variant="outline" size="lg">
-              View All Domains
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
         </div>
       </div>
     </section>
