@@ -34,11 +34,8 @@ export function Navbar() {
     }`}>
       <div className="container mx-auto flex h-20 items-center justify-between px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 group">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary transition-all group-hover:shadow-lg dark:group-hover:shadow-primary/25">
-            <span className="text-xl font-bold text-primary-foreground">A</span>
-          </div>
-          <span className="text-xl font-bold tracking-tight hidden sm:inline">
+        <Link to="/" className="flex items-center gap-2 group">
+          <span className="text-2xl font-bold tracking-tight">
             Agent<span className="text-primary">waala</span>
           </span>
         </Link>

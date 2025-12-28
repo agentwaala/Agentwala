@@ -27,11 +27,8 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand Column */}
           <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-3 mb-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-                <span className="text-xl font-bold text-primary-foreground">A</span>
-              </div>
-              <span className="text-xl font-bold tracking-tight">
+            <Link to="/" className="flex items-center gap-2 mb-6">
+              <span className="text-2xl font-bold tracking-tight">
                 Agent<span className="text-primary">waala</span>
               </span>
             </Link>
