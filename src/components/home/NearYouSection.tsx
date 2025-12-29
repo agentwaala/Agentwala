@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { MapPin, Navigation, Star, BadgeCheck, Crown, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,58 +10,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-const nearbyAgents = [
-  {
-    id: 1,
-    name: "Rajesh Kumar",
-    domain: "Real Estate",
-    rating: 4.9,
-    location: "Koramangala, Bangalore",
-    distance: "1.2 km",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-    isOnline: true,
-    isVerified: true,
-    isPremium: true,
-  },
-  {
-    id: 2,
-    name: "Priya Sharma",
-    domain: "Clothes",
-    rating: 4.8,
-    location: "HSR Layout, Bangalore",
-    distance: "2.4 km",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-    isOnline: true,
-    isVerified: true,
-    isPremium: false,
-  },
-  {
-    id: 3,
-    name: "Amit Patel",
-    domain: "Tiles",
-    rating: 4.7,
-    location: "BTM Layout, Bangalore",
-    distance: "3.8 km",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
-    isOnline: false,
-    isVerified: true,
-    isPremium: false,
-  },
-  {
-    id: 4,
-    name: "Sunita Reddy",
-    domain: "Beauty Products",
-    rating: 5.0,
-    location: "Indiranagar, Bangalore",
-    distance: "4.5 km",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-    isOnline: true,
-    isVerified: true,
-    isPremium: true,
-  },
-];
+interface NearbyAgent {
+  id: string;
+  full_name: string;
+  categories: string[] | null;
+  avatar_url: string | null;
+  city: string | null;
+  area: string | null;
+  state: string | null;
+  pincode: string | null;
+  available: boolean | null;
+  verified: boolean | null;
+  premium: boolean | null;
+  avgRating: number;
+}
 
 // Indian States with their Districts
 const statesWithDistricts: Record<string, string[]> = {
@@ -141,10 +107,85 @@ export function NearYouSection() {
   const [pincode, setPincode] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
+  const [agents, setAgents] = useState<NearbyAgent[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const availableDistricts = selectedState ? statesWithDistricts[selectedState] || [] : [];
   const availableLocalities = selectedDistrict ? districtLocalities[selectedDistrict] || [] : [];
+
+  // Fetch agents from database
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        setLoading(true);
+        let query = supabase
+          .from("agents")
+          .select("*")
+          .eq("profile_complete", true)
+          .order("premium", { ascending: false })
+          .order("available", { ascending: false })
+          .limit(4);
+
+        // Apply filters
+        if (selectedState) {
+          query = query.ilike("state", `%${selectedState}%`);
+        }
+        if (selectedDistrict) {
+          query = query.ilike("city", `%${selectedDistrict}%`);
+        }
+        if (selectedLocality) {
+          query = query.ilike("area", `%${selectedLocality}%`);
+        }
+        if (pincode) {
+          query = query.eq("pincode", pincode);
+        }
+
+        const { data: agentsData, error } = await query;
+
+        if (error) throw error;
+
+        if (agentsData && agentsData.length > 0) {
+          // Fetch reviews for ratings
+          const agentIds = agentsData.map((a) => a.id);
+          const { data: reviewsData } = await supabase
+            .from("reviews")
+            .select("agent_id, stars")
+            .in("agent_id", agentIds);
+
+          const agentsWithRatings = agentsData.map((agent) => {
+            const agentReviews = reviewsData?.filter((r) => r.agent_id === agent.id) || [];
+            const avgRating = agentReviews.length > 0
+              ? agentReviews.reduce((sum, r) => sum + r.stars, 0) / agentReviews.length
+              : 0;
+            return {
+              ...agent,
+              avgRating: Math.round(avgRating * 10) / 10,
+            };
+          });
+
+          // Apply sorting
+          if (selectedSort === "Highest rated") {
+            agentsWithRatings.sort((a, b) => b.avgRating - a.avgRating);
+          } else if (selectedSort === "Verified first") {
+            agentsWithRatings.sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0));
+          } else if (selectedSort === "Available now") {
+            agentsWithRatings.sort((a, b) => (b.available ? 1 : 0) - (a.available ? 1 : 0));
+          }
+
+          setAgents(agentsWithRatings);
+        } else {
+          setAgents([]);
+        }
+      } catch (error) {
+        console.error("Error fetching nearby agents:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAgents();
+  }, [selectedState, selectedDistrict, selectedLocality, pincode, selectedSort]);
 
   // Reverse geocoding to get state and district from coordinates
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
@@ -450,69 +491,95 @@ export function NearYouSection() {
 
         {/* Nearby Agents Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {nearbyAgents.map((agent) => (
-            <Link
-              key={agent.id}
-              to={`/agents/${agent.id}`}
-              className="group"
-            >
-              <div className="bg-card border border-border/50 rounded-2xl p-5 hover:border-primary/30 hover:shadow-lg transition-all duration-300">
-                {/* Agent Header */}
+          {loading ? (
+            // Loading skeletons
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-card border border-border/50 rounded-2xl p-5">
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="relative">
-                    <img
-                      src={agent.image}
-                      alt={agent.name}
-                      className="w-14 h-14 rounded-xl object-cover"
-                    />
-                    {/* Online Status Indicator */}
-                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-card ${
-                      agent.isOnline ? "bg-green-500" : "bg-muted-foreground/50"
-                    }`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <h3 className="font-semibold truncate">{agent.name}</h3>
-                      {agent.isVerified && (
-                        <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
-                      )}
-                      {agent.isPremium && (
-                        <Crown className="h-4 w-4 text-amber-500 shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-sm text-primary font-medium">{agent.domain}</p>
+                  <Skeleton className="w-14 h-14 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
                   </div>
                 </div>
-
-                {/* Location & Distance */}
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
-                  <MapPin className="h-3.5 w-3.5" />
-                  <span className="truncate">{agent.location}</span>
-                </div>
-
-                {/* Stats Row */}
-                <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-primary text-primary" />
-                    <span className="font-semibold">{agent.rating}</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
-                    <Navigation className="h-3 w-3" />
-                    {agent.distance}
-                  </span>
-                </div>
-
-                {/* Availability Status */}
-                <div className={`mt-3 text-center py-2 rounded-lg text-sm font-medium ${
-                  agent.isOnline 
-                    ? "bg-green-500/10 text-green-600" 
-                    : "bg-muted text-muted-foreground"
-                }`}>
-                  {agent.isOnline ? "Available Now" : "Currently Unavailable"}
-                </div>
+                <Skeleton className="h-3 w-full mb-3" />
+                <Skeleton className="h-8 w-full" />
               </div>
-            </Link>
-          ))}
+            ))
+          ) : agents.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              No agents found in this location. Try adjusting your filters.
+            </div>
+          ) : (
+            agents.map((agent) => (
+              <Link
+                key={agent.id}
+                to={`/agents/${agent.id}`}
+                className="group"
+              >
+                <div className="bg-card border border-border/50 rounded-2xl p-5 hover:border-primary/30 hover:shadow-lg transition-all duration-300">
+                  {/* Agent Header */}
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="relative">
+                      <img
+                        src={agent.avatar_url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop"}
+                        alt={agent.full_name}
+                        className="w-14 h-14 rounded-xl object-cover"
+                      />
+                      {/* Online Status Indicator */}
+                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-card ${
+                        agent.available ? "bg-green-500" : "bg-muted-foreground/50"
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <h3 className="font-semibold truncate">{agent.full_name}</h3>
+                        {agent.verified && (
+                          <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
+                        )}
+                        {agent.premium && (
+                          <Crown className="h-4 w-4 text-amber-500 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-sm text-primary font-medium">
+                        {agent.categories?.[0] || "General"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span className="truncate">
+                      {[agent.area, agent.city, agent.state].filter(Boolean).join(", ") || "India"}
+                    </span>
+                  </div>
+
+                  {/* Stats Row */}
+                  <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-primary text-primary" />
+                      <span className="font-semibold">{agent.avgRating || "New"}</span>
+                    </div>
+                    {agent.pincode && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+                        {agent.pincode}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Availability Status */}
+                  <div className={`mt-3 text-center py-2 rounded-lg text-sm font-medium ${
+                    agent.available 
+                      ? "bg-green-500/10 text-green-600" 
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    {agent.available ? "Available Now" : "Currently Unavailable"}
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
         </div>
 
         {/* View All CTA */}
