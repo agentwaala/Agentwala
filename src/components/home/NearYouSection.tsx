@@ -62,16 +62,68 @@ const nearbyAgents = [
   },
 ];
 
-const cities = ["Bangalore", "Mumbai", "Delhi", "Chennai", "Hyderabad", "Pune", "Kolkata"];
+// Indian States with their Districts
+const statesWithDistricts: Record<string, string[]> = {
+  "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Tirupati", "Kakinada", "Rajahmundry", "Kadapa", "Anantapur", "Eluru"],
+  "Arunachal Pradesh": ["Itanagar", "Naharlagun", "Pasighat", "Tawang", "Ziro", "Bomdila", "Along", "Tezu", "Changlang", "Roing"],
+  "Assam": ["Guwahati", "Jorhat", "Silchar", "Dibrugarh", "Tezpur", "Nagaon", "Tinsukia", "Bongaigaon", "Barpeta", "Goalpara"],
+  "Bihar": ["Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Purnia", "Darbhanga", "Arrah", "Begusarai", "Katihar", "Munger"],
+  "Chhattisgarh": ["Raipur", "Bilaspur", "Durg", "Bhilai", "Korba", "Rajnandgaon", "Raigarh", "Jagdalpur", "Ambikapur", "Dhamtari"],
+  "Goa": ["Panaji", "Margao", "Vasco da Gama", "Mapusa", "Ponda", "Bicholim", "Curchorem", "Canacona", "Quepem", "Sanguem"],
+  "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", "Jamnagar", "Junagadh", "Gandhinagar", "Anand", "Mehsana"],
+  "Haryana": ["Gurugram", "Faridabad", "Panipat", "Ambala", "Karnal", "Sonipat", "Rohtak", "Hisar", "Bhiwani", "Sirsa"],
+  "Himachal Pradesh": ["Shimla", "Dharamshala", "Manali", "Kullu", "Solan", "Mandi", "Hamirpur", "Bilaspur", "Una", "Kangra"],
+  "Jharkhand": ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro", "Deoghar", "Hazaribagh", "Giridih", "Ramgarh", "Dumka", "Chaibasa"],
+  "Karnataka": ["Bangalore", "Mysore", "Hubli", "Mangalore", "Belgaum", "Gulbarga", "Davangere", "Bellary", "Shimoga", "Tumkur"],
+  "Kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur", "Kannur", "Kollam", "Palakkad", "Alappuzha", "Malappuram", "Kottayam"],
+  "Madhya Pradesh": ["Bhopal", "Indore", "Jabalpur", "Gwalior", "Ujjain", "Sagar", "Satna", "Rewa", "Ratlam", "Dewas"],
+  "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Thane", "Nashik", "Aurangabad", "Solapur", "Kolhapur", "Amravati", "Nanded"],
+  "Manipur": ["Imphal", "Thoubal", "Bishnupur", "Churachandpur", "Kakching", "Ukhrul", "Senapati", "Tamenglong", "Chandel", "Jiribam"],
+  "Meghalaya": ["Shillong", "Tura", "Jowai", "Nongpoh", "Williamnagar", "Baghmara", "Resubelpara", "Mairang", "Nongstoin", "Khliehriat"],
+  "Mizoram": ["Aizawl", "Lunglei", "Champhai", "Serchhip", "Kolasib", "Lawngtlai", "Mamit", "Saiha", "Saitual", "Khawzawl"],
+  "Nagaland": ["Kohima", "Dimapur", "Mokokchung", "Tuensang", "Wokha", "Zunheboto", "Phek", "Mon", "Kiphire", "Longleng"],
+  "Odisha": ["Bhubaneswar", "Cuttack", "Rourkela", "Berhampur", "Sambalpur", "Puri", "Balasore", "Bhadrak", "Baripada", "Jharsuguda"],
+  "Punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda", "Mohali", "Pathankot", "Hoshiarpur", "Moga", "Firozpur"],
+  "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Bikaner", "Ajmer", "Bhilwara", "Alwar", "Sikar", "Pali"],
+  "Sikkim": ["Gangtok", "Namchi", "Gyalshing", "Mangan", "Rangpo", "Singtam", "Jorethang", "Ravangla", "Pakyong", "Soreng"],
+  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Tirunelveli", "Erode", "Vellore", "Thoothukudi", "Dindigul"],
+  "Telangana": ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Khammam", "Ramagundam", "Mahbubnagar", "Nalgonda", "Adilabad", "Suryapet"],
+  "Tripura": ["Agartala", "Udaipur", "Dharmanagar", "Kailashahar", "Belonia", "Ambassa", "Khowai", "Teliamura", "Sabroom", "Sonamura"],
+  "Uttar Pradesh": ["Lucknow", "Kanpur", "Agra", "Varanasi", "Prayagraj", "Meerut", "Ghaziabad", "Noida", "Bareilly", "Aligarh"],
+  "Uttarakhand": ["Dehradun", "Haridwar", "Rishikesh", "Nainital", "Haldwani", "Roorkee", "Rudrapur", "Kashipur", "Mussoorie", "Almora"],
+  "West Bengal": ["Kolkata", "Howrah", "Darjeeling", "Siliguri", "Asansol", "Durgapur", "Kharagpur", "Haldia", "Malda", "Burdwan"],
+  "Delhi": ["New Delhi", "Central Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi", "North West Delhi", "South West Delhi", "North East Delhi", "Shahdara"],
+  "Chandigarh": ["Chandigarh"],
+  "Puducherry": ["Puducherry", "Karaikal", "Mahe", "Yanam"],
+};
+
+// Localities based on district (sample data for major cities)
+const districtLocalities: Record<string, string[]> = {
+  "Bangalore": ["Koramangala", "HSR Layout", "BTM Layout", "Indiranagar", "Whitefield", "Electronic City", "Marathahalli", "Jayanagar", "JP Nagar", "Hebbal"],
+  "Mumbai": ["Andheri", "Bandra", "Powai", "Thane", "Malad", "Goregaon", "Borivali", "Kurla", "Chembur", "Dadar"],
+  "Delhi": ["Connaught Place", "Karol Bagh", "Dwarka", "Rohini", "Saket", "Lajpat Nagar", "Janakpuri", "Rajouri Garden", "Pitampura", "Vasant Kunj"],
+  "Hyderabad": ["Hitech City", "Gachibowli", "Madhapur", "Banjara Hills", "Jubilee Hills", "Secunderabad", "Kukatpally", "Kondapur", "Ameerpet", "Begumpet"],
+  "Chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "OMR", "Porur", "Tambaram", "Guindy", "Nungambakkam", "Mylapore"],
+  "Pune": ["Koregaon Park", "Viman Nagar", "Hinjewadi", "Kothrud", "Baner", "Wakad", "Hadapsar", "Aundh", "Magarpatta", "Shivajinagar"],
+  "Kolkata": ["Salt Lake", "Park Street", "New Town", "Ballygunge", "Behala", "Tollygunge", "Howrah", "Dum Dum", "Jadavpur", "Alipore"],
+  "Ahmedabad": ["Satellite", "SG Highway", "Navrangpura", "Vastrapur", "Bodakdev", "Maninagar", "Chandkheda", "Bopal", "Prahlad Nagar", "Thaltej"],
+  "Jaipur": ["Malviya Nagar", "Vaishali Nagar", "Mansarovar", "C Scheme", "Raja Park", "Tonk Road", "Sodala", "Jagatpura", "Bani Park", "Vidhyadhar Nagar"],
+  "Lucknow": ["Hazratganj", "Gomti Nagar", "Aliganj", "Indira Nagar", "Mahanagar", "Chowk", "Aminabad", "Alambagh", "Vikas Nagar", "Jankipuram"],
+};
+
 const distances = ["Within 2 km", "Within 5 km", "Within 10 km", "Within 25 km"];
 const sortOptions = ["Nearest first", "Highest rated", "Verified first", "Available now"];
 
 export function NearYouSection() {
-  const [selectedCity, setSelectedCity] = useState("Bangalore");
+  const [selectedState, setSelectedState] = useState("Karnataka");
+  const [selectedDistrict, setSelectedDistrict] = useState("Bangalore");
+  const [selectedLocality, setSelectedLocality] = useState("");
   const [selectedDistance, setSelectedDistance] = useState("Within 5 km");
   const [selectedSort, setSelectedSort] = useState("Nearest first");
   const [pincode, setPincode] = useState("");
-  const [area, setArea] = useState("");
+
+  const availableDistricts = statesWithDistricts[selectedState] || [];
+  const availableLocalities = districtLocalities[selectedDistrict] || [];
 
   return (
     <section className="py-24 bg-muted/30">
@@ -92,27 +144,57 @@ export function NearYouSection() {
 
         {/* Location Filters */}
         <div className="bg-card border border-border/50 rounded-2xl p-6 mb-10 max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            <Select value={selectedCity} onValueChange={setSelectedCity}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <Select value={selectedState} onValueChange={(value) => {
+              setSelectedState(value);
+              setSelectedDistrict(statesWithDistricts[value]?.[0] || "");
+              setSelectedLocality("");
+            }}>
               <SelectTrigger className="h-12 rounded-xl">
                 <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Select City" />
+                <SelectValue placeholder="Select State" />
               </SelectTrigger>
               <SelectContent>
-                {cities.map((city) => (
-                  <SelectItem key={city} value={city}>
-                    {city}
+                {Object.keys(statesWithDistricts).map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Input
-              placeholder="Enter Area / Locality"
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              className="h-12 rounded-xl"
-            />
+            <Select value={selectedDistrict} onValueChange={(value) => {
+              setSelectedDistrict(value);
+              setSelectedLocality("");
+            }}>
+              <SelectTrigger className="h-12 rounded-xl">
+                <SelectValue placeholder="Select District" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableDistricts.map((district) => (
+                  <SelectItem key={district} value={district}>
+                    {district}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedLocality} onValueChange={setSelectedLocality}>
+              <SelectTrigger className="h-12 rounded-xl">
+                <SelectValue placeholder="Select Locality" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableLocalities.length > 0 ? (
+                  availableLocalities.map((locality) => (
+                    <SelectItem key={locality} value={locality}>
+                      {locality}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="all" disabled>No localities available</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
 
             <Input
               placeholder="Enter Pincode"
@@ -227,7 +309,7 @@ export function NearYouSection() {
         <div className="text-center mt-10">
           <Link to="/agents">
             <Button variant="outline" size="lg" className="rounded-xl">
-              View All Agents in {selectedCity}
+              View All Agents in {selectedDistrict}
             </Button>
           </Link>
         </div>
