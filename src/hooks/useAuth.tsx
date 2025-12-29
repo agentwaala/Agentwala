@@ -9,7 +9,8 @@ interface AuthContextType {
   session: Session | null;
   role: AppRole | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   setUserRole: (role: AppRole) => Promise<void>;
 }
@@ -68,14 +69,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/auth/callback`;
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
       options: {
-        redirectTo: redirectUrl,
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: fullName,
+        },
       },
     });
+    
+    if (error) {
+      return { error: error.message };
+    }
+    
+    if (data.user && !data.session) {
+      // Email confirmation required
+      return { error: null };
+    }
+    
+    return { error: null };
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) {
+      return { error: error.message };
+    }
+    
+    return { error: null };
   };
 
   const signOut = async () => {
@@ -119,7 +149,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       session,
       role,
       loading,
-      signInWithGoogle,
+      signUp,
+      signIn,
       signOut,
       setUserRole,
     }}>
