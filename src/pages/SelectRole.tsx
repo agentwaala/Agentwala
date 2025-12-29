@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,11 +9,24 @@ import { Users, Briefcase, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const SelectRole = () => {
-  const { user, setUserRole, loading } = useAuth();
+  const { user, role, setUserRole, loading } = useAuth();
   const [selectedRole, setSelectedRole] = useState<'customer' | 'agent' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect if user already has a role
+  useEffect(() => {
+    if (!loading && role) {
+      if (role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (role === 'agent') {
+        navigate('/agent-dashboard', { replace: true });
+      } else {
+        navigate('/customer-dashboard', { replace: true });
+      }
+    }
+  }, [role, loading, navigate]);
 
   const handleRoleSelection = async () => {
     if (!selectedRole || !user) return;
@@ -53,6 +66,15 @@ const SelectRole = () => {
   if (!user) {
     navigate('/auth');
     return null;
+  }
+
+  // Show loading while redirecting existing users
+  if (role) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
