@@ -30,6 +30,9 @@ export type Database = {
           pincode: string | null
           premium: boolean | null
           profile_complete: boolean | null
+          rejected: boolean | null
+          rejected_at: string | null
+          rejection_reason: string | null
           state: string | null
           updated_at: string
           user_id: string
@@ -50,6 +53,9 @@ export type Database = {
           pincode?: string | null
           premium?: boolean | null
           profile_complete?: boolean | null
+          rejected?: boolean | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
           state?: string | null
           updated_at?: string
           user_id: string
@@ -70,6 +76,9 @@ export type Database = {
           pincode?: string | null
           premium?: boolean | null
           profile_complete?: boolean | null
+          rejected?: boolean | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
           state?: string | null
           updated_at?: string
           user_id?: string
