@@ -24,6 +24,8 @@ import {
   Circle,
   History,
   Loader2,
+  AlertTriangle,
+  Send,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +48,9 @@ interface AgentData {
   verified: boolean;
   premium: boolean;
   profile_complete: boolean;
+  rejected: boolean | null;
+  rejection_reason: string | null;
+  rejected_at: string | null;
 }
 
 interface CallData {
@@ -198,7 +203,43 @@ const AgentDashboard = () => {
     setSaving(false);
   };
 
-  const averageRating = reviews.length > 0 
+  const handleReapply = async () => {
+    if (!agentData) return;
+    
+    setSaving(true);
+    
+    const { error } = await supabase
+      .from('agents')
+      .update({
+        rejected: false,
+        rejection_reason: null,
+        rejected_at: null,
+      })
+      .eq('id', agentData.id);
+    
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to submit re-application',
+        variant: 'destructive',
+      });
+    } else {
+      setAgentData({ 
+        ...agentData, 
+        rejected: false,
+        rejection_reason: null,
+        rejected_at: null,
+      });
+      toast({
+        title: 'Re-application submitted',
+        description: 'Your profile is now pending review again',
+      });
+    }
+    
+    setSaving(false);
+  };
+
+  const averageRating = reviews.length > 0
     ? reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length 
     : 0;
 
@@ -251,7 +292,44 @@ const AgentDashboard = () => {
             </div>
           </div>
 
-          {!agentData?.profile_complete && (
+          {agentData?.rejected && (
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-destructive font-medium">Your application was rejected</p>
+                  {agentData.rejection_reason && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      <strong>Reason:</strong> {agentData.rejection_reason}
+                    </p>
+                  )}
+                  {agentData.rejected_at && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Rejected on: {new Date(agentData.rejected_at).toLocaleDateString()}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Please update your profile to address the issue and re-apply.
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    onClick={handleReapply}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    Re-apply for Approval
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!agentData?.profile_complete && !agentData?.rejected && (
             <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
               <p className="text-amber-600 font-medium">Complete your profile to appear in agent listings</p>
               <p className="text-sm text-muted-foreground">Fill in all required fields: name, phone, location, and at least one category</p>
