@@ -19,11 +19,71 @@ export function HeroSection() {
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/15 rounded-full blur-[100px] animate-glow-pulse" style={{ animationDelay: "1s" }} />
       </div>
 
-      {/* Background for light mode */}
-      <div className="absolute inset-0 dark:hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background" />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[80px]" />
+      {/* Background for light mode with waves */}
+      <div className="absolute inset-0 dark:hidden overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-50 via-white to-white" />
+        
+        {/* Left wave */}
+        <svg 
+          className="absolute left-0 top-0 h-full w-1/3 opacity-60"
+          viewBox="0 0 400 800" 
+          fill="none" 
+          preserveAspectRatio="none"
+        >
+          <path 
+            d="M-100 0C-100 0 150 200 100 400C50 600 200 800 200 800L-100 800L-100 0Z" 
+            fill="url(#leftWaveGradient)"
+          />
+          <path 
+            d="M-150 0C-150 0 100 250 50 450C0 650 150 800 150 800L-150 800L-150 0Z" 
+            fill="url(#leftWaveGradient2)"
+            opacity="0.5"
+          />
+          <defs>
+            <linearGradient id="leftWaveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="hsl(210 100% 95%)" />
+              <stop offset="50%" stopColor="hsl(200 100% 92%)" />
+              <stop offset="100%" stopColor="hsl(217 100% 96%)" />
+            </linearGradient>
+            <linearGradient id="leftWaveGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="hsl(199 90% 90%)" />
+              <stop offset="100%" stopColor="hsl(210 100% 95%)" />
+            </linearGradient>
+          </defs>
+        </svg>
+        
+        {/* Right wave */}
+        <svg 
+          className="absolute right-0 top-0 h-full w-1/3 opacity-60"
+          viewBox="0 0 400 800" 
+          fill="none" 
+          preserveAspectRatio="none"
+        >
+          <path 
+            d="M500 0C500 0 250 200 300 400C350 600 200 800 200 800L500 800L500 0Z" 
+            fill="url(#rightWaveGradient)"
+          />
+          <path 
+            d="M550 0C550 0 300 250 350 450C400 650 250 800 250 800L550 800L550 0Z" 
+            fill="url(#rightWaveGradient2)"
+            opacity="0.5"
+          />
+          <defs>
+            <linearGradient id="rightWaveGradient" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="hsl(210 100% 95%)" />
+              <stop offset="50%" stopColor="hsl(200 100% 92%)" />
+              <stop offset="100%" stopColor="hsl(217 100% 96%)" />
+            </linearGradient>
+            <linearGradient id="rightWaveGradient2" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="hsl(199 90% 90%)" />
+              <stop offset="100%" stopColor="hsl(210 100% 95%)" />
+            </linearGradient>
+          </defs>
+        </svg>
+        
+        {/* Soft glow orbs */}
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-blue-100/50 rounded-full blur-[100px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-sky-100/40 rounded-full blur-[80px]" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10 pt-20">
