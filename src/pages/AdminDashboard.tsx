@@ -58,6 +58,7 @@ interface AgentData {
   rejection_reason: string | null;
   rejected_at: string | null;
   created_at: string;
+  email?: string;
 }
 
 const AdminDashboard = () => {
@@ -95,12 +96,26 @@ const AdminDashboard = () => {
 
       if (agentsError) throw agentsError;
 
+      // Fetch profiles to get emails
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, email");
+
+      const emailMap = new Map(
+        profilesData?.map((p) => [p.user_id, p.email]) || []
+      );
+
       if (agentsData) {
-        setAgents(agentsData as AgentData[]);
+        const agentsWithEmail = agentsData.map((agent) => ({
+          ...agent,
+          email: emailMap.get(agent.user_id) || undefined,
+        })) as AgentData[];
+
+        setAgents(agentsWithEmail);
 
         // Show unverified and NOT rejected agents in the approval queue
         setPendingAgents(
-          (agentsData as AgentData[]).filter((a) => !a.verified && !a.rejected)
+          agentsWithEmail.filter((a) => !a.verified && !a.rejected)
         );
 
         setStats({
@@ -138,7 +153,27 @@ const AdminDashboard = () => {
     }
   };
 
+  const sendNotification = async (
+    type: "approved" | "rejected",
+    agentEmail: string,
+    agentName: string,
+    rejectionReason?: string
+  ) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-agent-notification", {
+        body: { type, agentEmail, agentName, rejectionReason },
+      });
+      if (error) {
+        console.error("Failed to send notification:", error);
+      }
+    } catch (err) {
+      console.error("Error sending notification:", err);
+    }
+  };
+
   const handleVerifyAgent = async (agentId: string, verified: boolean) => {
+    const agent = agents.find((a) => a.id === agentId);
+    
     const { error } = await supabase
       .from("agents")
       .update({ verified })
@@ -154,6 +189,12 @@ const AdminDashboard = () => {
       toast({
         title: verified ? "Agent verified" : "Agent unverified",
       });
+      
+      // Send approval notification
+      if (verified && agent?.email) {
+        sendNotification("approved", agent.email, agent.full_name);
+      }
+      
       fetchData();
     }
   };
@@ -243,6 +284,17 @@ const AdminDashboard = () => {
         title: "Agent rejected",
         description: `${rejectingAgent.full_name} has been rejected.`,
       });
+      
+      // Send rejection notification
+      if (rejectingAgent.email) {
+        sendNotification(
+          "rejected",
+          rejectingAgent.email,
+          rejectingAgent.full_name,
+          rejectionReason.trim()
+        );
+      }
+      
       setRejectDialogOpen(false);
       setRejectingAgent(null);
       setRejectionReason("");
