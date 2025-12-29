@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -11,109 +11,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Star, MapPin, Search, SlidersHorizontal, X, Verified, MessageCircle } from "lucide-react";
+import { Star, MapPin, Search, X, Verified, MessageCircle, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const allAgents = [
-  {
-    id: 1,
-    name: "Rajesh Sharma",
-    domain: "Real Estate",
-    rating: 4.9,
-    reviews: 127,
-    location: "Mumbai, Maharashtra",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-    verified: true,
-    description: "Expert in luxury properties with 10+ years of experience in Mumbai real estate market.",
-    responseTime: "< 1 hour",
-  },
-  {
-    id: 2,
-    name: "Priya Patel",
-    domain: "Tech Consulting",
-    rating: 4.8,
-    reviews: 89,
-    location: "Bengaluru, Karnataka",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-    verified: true,
-    description: "Cloud architecture specialist helping businesses scale their infrastructure efficiently.",
-    responseTime: "< 2 hours",
-  },
-  {
-    id: 3,
-    name: "Amit Kumar",
-    domain: "Tourism",
-    rating: 5.0,
-    reviews: 203,
-    location: "Jaipur, Rajasthan",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
-    verified: true,
-    description: "Certified travel guide specializing in unique cultural experiences across Rajasthan.",
-    responseTime: "< 30 min",
-  },
-  {
-    id: 4,
-    name: "Sneha Reddy",
-    domain: "Business",
-    rating: 4.7,
-    reviews: 156,
-    location: "Hyderabad, Telangana",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-    verified: true,
-    description: "Business strategist with expertise in startup consulting and market expansion.",
-    responseTime: "< 3 hours",
-  },
-  {
-    id: 5,
-    name: "Vikram Singh",
-    domain: "Education",
-    rating: 4.9,
-    reviews: 94,
-    location: "Delhi, Delhi",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop",
-    verified: true,
-    description: "Career counselor helping students and professionals find their ideal career paths.",
-    responseTime: "< 1 hour",
-  },
-  {
-    id: 6,
-    name: "Ananya Iyer",
-    domain: "Healthcare",
-    rating: 4.8,
-    reviews: 112,
-    location: "Chennai, Tamil Nadu",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop",
-    verified: true,
-    description: "Wellness coach and fitness expert with a holistic approach to health.",
-    responseTime: "< 2 hours",
-  },
-  {
-    id: 7,
-    name: "Arjun Mehta",
-    domain: "Legal",
-    rating: 4.6,
-    reviews: 78,
-    location: "Ahmedabad, Gujarat",
-    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop",
-    verified: true,
-    description: "Corporate lawyer specializing in business contracts and compliance matters.",
-    responseTime: "< 4 hours",
-  },
-  {
-    id: 8,
-    name: "Kavita Joshi",
-    domain: "Fashion",
-    rating: 4.9,
-    reviews: 145,
-    location: "Pune, Maharashtra",
-    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop",
-    verified: true,
-    description: "Personal stylist with connections to top fashion designers across India.",
-    responseTime: "< 1 hour",
-  },
+type Agent = Tables<"agents"> & {
+  avgRating?: number;
+  reviewCount?: number;
+};
+
+const domains = [
+  "All Domains",
+  "Clothes",
+  "Real Estate",
+  "Medicine",
+  "Fruit",
+  "Crop Seeds",
+  "Shoes",
+  "Beauty Products",
+  "Tiles",
+  "Second-hand Vehicles",
+  "Tours & Travel",
+  "Food & Vegetable",
 ];
 
-const domains = ["All Domains", "Real Estate", "Tech Consulting", "Tourism", "Business", "Education", "Healthcare", "Legal", "Fashion"];
-const locations = ["All Locations", "Maharashtra", "Karnataka", "Delhi", "Tamil Nadu", "Telangana", "Gujarat", "Rajasthan", "Uttar Pradesh", "West Bengal", "Kerala"];
+const locations = [
+  "All Locations",
+  "Maharashtra",
+  "Karnataka",
+  "Delhi",
+  "Tamil Nadu",
+  "Telangana",
+  "Gujarat",
+  "Rajasthan",
+  "Uttar Pradesh",
+  "West Bengal",
+  "Kerala",
+  "Madhya Pradesh",
+  "Bihar",
+  "Punjab",
+  "Haryana",
+];
 
 const Agents = () => {
   const [searchParams] = useSearchParams();
@@ -121,14 +60,79 @@ const Agents = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedDomain, setSelectedDomain] = useState(searchParams.get("domain") || "All Domains");
   const [selectedLocation, setSelectedLocation] = useState("All Locations");
-  const [showFilters, setShowFilters] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredAgents = allAgents.filter((agent) => {
-    const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.domain.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDomain = selectedDomain === "All Domains" || agent.domain === selectedDomain;
-    const matchesLocation = selectedLocation === "All Locations" || agent.location.includes(selectedLocation);
+  useEffect(() => {
+    fetchAgents();
+  }, []);
+
+  const fetchAgents = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch agents with profile_complete = true
+      const { data: agentsData, error: agentsError } = await supabase
+        .from("agents")
+        .select("*")
+        .eq("profile_complete", true)
+        .order("premium", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (agentsError) throw agentsError;
+
+      if (agentsData && agentsData.length > 0) {
+        // Fetch reviews for all agents to calculate ratings
+        const agentIds = agentsData.map(a => a.id);
+        const { data: reviewsData } = await supabase
+          .from("reviews")
+          .select("agent_id, stars")
+          .in("agent_id", agentIds);
+
+        // Calculate average ratings
+        const ratingsMap = new Map<string, { total: number; count: number }>();
+        reviewsData?.forEach(review => {
+          const existing = ratingsMap.get(review.agent_id) || { total: 0, count: 0 };
+          ratingsMap.set(review.agent_id, {
+            total: existing.total + review.stars,
+            count: existing.count + 1,
+          });
+        });
+
+        const agentsWithRatings = agentsData.map(agent => ({
+          ...agent,
+          avgRating: ratingsMap.has(agent.id)
+            ? Math.round((ratingsMap.get(agent.id)!.total / ratingsMap.get(agent.id)!.count) * 10) / 10
+            : 0,
+          reviewCount: ratingsMap.get(agent.id)?.count || 0,
+        }));
+
+        setAgents(agentsWithRatings);
+      } else {
+        setAgents([]);
+      }
+    } catch (error) {
+      console.error("Error fetching agents:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredAgents = agents.filter((agent) => {
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch =
+      agent.full_name.toLowerCase().includes(searchLower) ||
+      (agent.description?.toLowerCase().includes(searchLower) ?? false) ||
+      (agent.categories?.some(cat => cat.toLowerCase().includes(searchLower)) ?? false);
+    
+    const matchesDomain =
+      selectedDomain === "All Domains" ||
+      (agent.categories?.includes(selectedDomain) ?? false);
+    
+    const matchesLocation =
+      selectedLocation === "All Locations" ||
+      agent.state === selectedLocation;
+    
     return matchesSearch && matchesDomain && matchesLocation;
   });
 
@@ -139,6 +143,15 @@ const Agents = () => {
   };
 
   const hasActiveFilters = searchQuery || selectedDomain !== "All Domains" || selectedLocation !== "All Locations";
+
+  const getAgentLocation = (agent: Agent) => {
+    const parts = [agent.city, agent.state].filter(Boolean);
+    return parts.join(", ") || "India";
+  };
+
+  const getAgentDomain = (agent: Agent) => {
+    return agent.categories?.[0] || "General";
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -161,7 +174,7 @@ const Agents = () => {
                 <span className="text-muted-foreground">Expert Agent</span>
               </h1>
               <p className="text-muted-foreground text-lg mb-8">
-                Browse our network of {allAgents.length}+ verified professionals.
+                Browse our network of verified professionals across India.
               </p>
             </div>
 
@@ -228,7 +241,23 @@ const Agents = () => {
               </p>
             </div>
 
-            {filteredAgents.length > 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="bg-card rounded-2xl border border-border/50 p-6">
+                    <div className="flex gap-4">
+                      <Skeleton className="w-16 h-16 rounded-2xl" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-5 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                        <Skeleton className="h-4 w-2/3" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-12 w-full mt-4" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredAgents.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredAgents.map((agent, index) => (
                   <Link 
@@ -238,13 +267,18 @@ const Agents = () => {
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
                     <div className="relative bg-card rounded-2xl border border-border/50 overflow-hidden hover:border-primary/30 transition-all duration-500 hover:shadow-xl dark:hover:shadow-primary/5">
+                      {agent.premium && (
+                        <div className="absolute top-3 right-3 px-2 py-1 bg-primary/10 rounded-full">
+                          <span className="text-xs font-semibold text-primary">Premium</span>
+                        </div>
+                      )}
                       <div className="p-6">
                         <div className="flex gap-4">
                           {/* Avatar */}
                           <div className="relative shrink-0">
                             <img
-                              src={agent.image}
-                              alt={agent.name}
+                              src={agent.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(agent.full_name)}&background=random&size=128`}
+                              alt={agent.full_name}
                               className="w-16 h-16 rounded-2xl object-cover ring-2 ring-border group-hover:ring-primary/30 transition-all"
                             />
                             {agent.verified && (
@@ -258,35 +292,39 @@ const Agents = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2 mb-1">
                               <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">
-                                {agent.name}
+                                {agent.full_name}
                               </h3>
-                              <div className="flex items-center gap-1 shrink-0 px-2 py-0.5 bg-primary/10 rounded-lg">
-                                <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                                <span className="text-sm font-semibold text-primary">{agent.rating}</span>
-                              </div>
+                              {agent.avgRating > 0 && (
+                                <div className="flex items-center gap-1 shrink-0 px-2 py-0.5 bg-primary/10 rounded-lg">
+                                  <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                                  <span className="text-sm font-semibold text-primary">{agent.avgRating}</span>
+                                </div>
+                              )}
                             </div>
                             
                             <p className="text-primary text-sm font-medium mb-1">
-                              {agent.domain}
+                              {getAgentDomain(agent)}
                             </p>
                             
                             <div className="flex items-center gap-1 text-sm text-muted-foreground">
                               <MapPin className="h-3.5 w-3.5" />
-                              <span>{agent.location}</span>
+                              <span>{getAgentLocation(agent)}</span>
                             </div>
                           </div>
                         </div>
 
                         <p className="text-sm text-muted-foreground mt-4 line-clamp-2">
-                          {agent.description}
+                          {agent.description || "Expert agent ready to assist you."}
                         </p>
 
                         <div className="flex items-center justify-between mt-5 pt-4 border-t border-border/50">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <MessageCircle className="h-3.5 w-3.5" />
-                            <span>Replies {agent.responseTime}</span>
+                            <span>{agent.available ? "Available" : "Busy"}</span>
                           </div>
-                          <span className="text-xs text-muted-foreground">{agent.reviews} reviews</span>
+                          {agent.reviewCount > 0 && (
+                            <span className="text-xs text-muted-foreground">{agent.reviewCount} reviews</span>
+                          )}
                         </div>
                       </div>
 
@@ -306,10 +344,16 @@ const Agents = () => {
                   <Search className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">No agents found</h3>
-                <p className="text-muted-foreground mb-6">Try adjusting your search or filters</p>
-                <Button variant="outline" onClick={clearFilters}>
-                  Clear all filters
-                </Button>
+                <p className="text-muted-foreground mb-6">
+                  {agents.length === 0 
+                    ? "No verified agents available yet. Check back soon!" 
+                    : "Try adjusting your search or filters"}
+                </p>
+                {hasActiveFilters && (
+                  <Button variant="outline" onClick={clearFilters}>
+                    Clear all filters
+                  </Button>
+                )}
               </div>
             )}
           </div>
