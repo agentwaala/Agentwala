@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Navigation, Star, Phone, BadgeCheck, Crown, Circle } from "lucide-react";
+import { MapPin, Navigation, Star, BadgeCheck, Crown, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 const nearbyAgents = [
   {
@@ -114,16 +115,170 @@ const districtLocalities: Record<string, string[]> = {
 const distances = ["Within 2 km", "Within 5 km", "Within 10 km", "Within 25 km"];
 const sortOptions = ["Nearest first", "Highest rated", "Verified first", "Available now"];
 
+// India bounding box coordinates
+const INDIA_BOUNDS = {
+  north: 35.513327,
+  south: 6.753516,
+  east: 97.395561,
+  west: 68.186249,
+};
+
+const isLocationInIndia = (lat: number, lng: number): boolean => {
+  return (
+    lat >= INDIA_BOUNDS.south &&
+    lat <= INDIA_BOUNDS.north &&
+    lng >= INDIA_BOUNDS.west &&
+    lng <= INDIA_BOUNDS.east
+  );
+};
+
 export function NearYouSection() {
-  const [selectedState, setSelectedState] = useState("Karnataka");
-  const [selectedDistrict, setSelectedDistrict] = useState("Bangalore");
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedLocality, setSelectedLocality] = useState("");
   const [selectedDistance, setSelectedDistance] = useState("Within 5 km");
   const [selectedSort, setSelectedSort] = useState("Nearest first");
   const [pincode, setPincode] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const { toast } = useToast();
 
-  const availableDistricts = statesWithDistricts[selectedState] || [];
-  const availableLocalities = districtLocalities[selectedDistrict] || [];
+  const availableDistricts = selectedState ? statesWithDistricts[selectedState] || [] : [];
+  const availableLocalities = selectedDistrict ? districtLocalities[selectedDistrict] || [] : [];
+
+  // Reverse geocoding to get state and district from coordinates
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`,
+        {
+          headers: {
+            'Accept-Language': 'en',
+          },
+        }
+      );
+      const data = await response.json();
+      
+      if (data.address) {
+        const { state, city, town, village, county, state_district } = data.address;
+        
+        // Find matching state in our data
+        const detectedState = Object.keys(statesWithDistricts).find(
+          (s) => state?.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(state?.toLowerCase() || "")
+        );
+        
+        if (detectedState) {
+          setSelectedState(detectedState);
+          
+          // Find matching district
+          const districts = statesWithDistricts[detectedState];
+          const locationName = city || town || village || county || state_district || "";
+          const detectedDistrict = districts.find(
+            (d) => locationName.toLowerCase().includes(d.toLowerCase()) || d.toLowerCase().includes(locationName.toLowerCase())
+          );
+          
+          if (detectedDistrict) {
+            setSelectedDistrict(detectedDistrict);
+            
+            // Check for locality
+            const localities = districtLocalities[detectedDistrict] || [];
+            const suburb = data.address.suburb || data.address.neighbourhood || "";
+            const detectedLocality = localities.find(
+              (l) => suburb.toLowerCase().includes(l.toLowerCase()) || l.toLowerCase().includes(suburb.toLowerCase())
+            );
+            if (detectedLocality) {
+              setSelectedLocality(detectedLocality);
+            }
+          } else {
+            setSelectedDistrict(districts[0] || "");
+          }
+          
+          toast({
+            title: "Location detected",
+            description: `Found: ${detectedState}${detectedDistrict ? `, ${detectedDistrict}` : ""}`,
+          });
+        } else {
+          throw new Error("Could not match your location to a known Indian state");
+        }
+      }
+    } catch (error) {
+      throw new Error("Failed to detect your location details");
+    }
+  }, [toast]);
+
+  const handleUseMyLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      toast({
+        title: "Not supported",
+        description: "Geolocation is not supported by your browser",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // Check if location is within India
+        if (!isLocationInIndia(latitude, longitude)) {
+          setIsLocating(false);
+          setLocationError("This service is only available in India");
+          toast({
+            title: "Location outside India",
+            description: "Agentwaala is currently available only in India. Please select your location manually.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        try {
+          await reverseGeocode(latitude, longitude);
+        } catch (error) {
+          setLocationError("Could not detect your exact location. Please select manually.");
+          toast({
+            title: "Detection failed",
+            description: "Could not detect your exact location. Please select manually.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        setIsLocating(false);
+        let message = "Unable to retrieve your location";
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message = "Location access denied. Please enable location permissions.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message = "Location information is unavailable.";
+            break;
+          case error.TIMEOUT:
+            message = "Location request timed out.";
+            break;
+        }
+        
+        setLocationError(message);
+        toast({
+          title: "Location error",
+          description: message,
+          variant: "destructive",
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutes cache
+      }
+    );
+  }, [reverseGeocode, toast]);
 
   return (
     <section className="py-24 bg-muted/30">
@@ -144,17 +299,60 @@ export function NearYouSection() {
 
         {/* Location Filters */}
         <div className="bg-card border border-border/50 rounded-2xl p-6 mb-10 max-w-5xl mx-auto">
+          {/* GPS Detection Button */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 pb-6 border-b border-border/50">
+            <Button
+              onClick={handleUseMyLocation}
+              disabled={isLocating}
+              className="h-12 rounded-xl w-full sm:w-auto"
+              variant={locationError ? "outline" : "default"}
+            >
+              {isLocating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Detecting Location...
+                </>
+              ) : (
+                <>
+                  <Navigation className="h-4 w-4 mr-2" />
+                  Auto-detect My Location
+                </>
+              )}
+            </Button>
+            {locationError && (
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <span>{locationError}</span>
+              </div>
+            )}
+            {!locationError && !isLocating && (
+              <span className="text-sm text-muted-foreground">
+                Works only within India
+              </span>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <Select value={selectedState} onValueChange={(value) => {
-              setSelectedState(value);
-              setSelectedDistrict(statesWithDistricts[value]?.[0] || "");
-              setSelectedLocality("");
-            }}>
+            <Select 
+              value={selectedState} 
+              onValueChange={(value) => {
+                if (value === "all") {
+                  setSelectedState("");
+                  setSelectedDistrict("");
+                  setSelectedLocality("");
+                } else {
+                  setSelectedState(value);
+                  setSelectedDistrict(statesWithDistricts[value]?.[0] || "");
+                  setSelectedLocality("");
+                }
+              }}
+            >
               <SelectTrigger className="h-12 rounded-xl">
                 <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Select State" />
+                <SelectValue placeholder="All States" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All States</SelectItem>
                 {Object.keys(statesWithDistricts).map((state) => (
                   <SelectItem key={state} value={state}>
                     {state}
@@ -163,14 +361,24 @@ export function NearYouSection() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedDistrict} onValueChange={(value) => {
-              setSelectedDistrict(value);
-              setSelectedLocality("");
-            }}>
+            <Select 
+              value={selectedDistrict} 
+              onValueChange={(value) => {
+                if (value === "all") {
+                  setSelectedDistrict("");
+                  setSelectedLocality("");
+                } else {
+                  setSelectedDistrict(value);
+                  setSelectedLocality("");
+                }
+              }}
+              disabled={!selectedState}
+            >
               <SelectTrigger className="h-12 rounded-xl">
-                <SelectValue placeholder="Select District" />
+                <SelectValue placeholder="All Districts" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All Districts</SelectItem>
                 {availableDistricts.map((district) => (
                   <SelectItem key={district} value={district}>
                     {district}
@@ -179,20 +387,27 @@ export function NearYouSection() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedLocality} onValueChange={setSelectedLocality}>
+            <Select 
+              value={selectedLocality} 
+              onValueChange={(value) => {
+                if (value === "all") {
+                  setSelectedLocality("");
+                } else {
+                  setSelectedLocality(value);
+                }
+              }}
+              disabled={!selectedDistrict || availableLocalities.length === 0}
+            >
               <SelectTrigger className="h-12 rounded-xl">
-                <SelectValue placeholder="Select Locality" />
+                <SelectValue placeholder="All Localities" />
               </SelectTrigger>
               <SelectContent>
-                {availableLocalities.length > 0 ? (
-                  availableLocalities.map((locality) => (
-                    <SelectItem key={locality} value={locality}>
-                      {locality}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="all" disabled>No localities available</SelectItem>
-                )}
+                <SelectItem value="all">All Localities</SelectItem>
+                {availableLocalities.map((locality) => (
+                  <SelectItem key={locality} value={locality}>
+                    {locality}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -204,7 +419,7 @@ export function NearYouSection() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select value={selectedDistance} onValueChange={setSelectedDistance}>
               <SelectTrigger className="h-12 rounded-xl">
                 <SelectValue placeholder="Distance" />
@@ -230,11 +445,6 @@ export function NearYouSection() {
                 ))}
               </SelectContent>
             </Select>
-
-            <Button className="h-12 rounded-xl">
-              <Navigation className="h-4 w-4 mr-2" />
-              Use My Location
-            </Button>
           </div>
         </div>
 
@@ -309,7 +519,7 @@ export function NearYouSection() {
         <div className="text-center mt-10">
           <Link to="/agents">
             <Button variant="outline" size="lg" className="rounded-xl">
-              View All Agents in {selectedDistrict}
+              View All Agents {selectedDistrict ? `in ${selectedDistrict}` : selectedState ? `in ${selectedState}` : ""}
             </Button>
           </Link>
         </div>
