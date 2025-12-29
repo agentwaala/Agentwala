@@ -69,7 +69,9 @@ const sortOptions = ["Nearest first", "Highest rated", "Verified first", "Availa
 export function NearYouSection() {
   const [selectedCity, setSelectedCity] = useState("Bangalore");
   const [selectedDistance, setSelectedDistance] = useState("Within 5 km");
+  const [selectedSort, setSelectedSort] = useState("Nearest first");
   const [pincode, setPincode] = useState("");
+  const [area, setArea] = useState("");
 
   return (
     <section className="py-24 bg-muted/30">
@@ -89,8 +91,8 @@ export function NearYouSection() {
         </div>
 
         {/* Location Filters */}
-        <div className="bg-card border border-border/50 rounded-2xl p-6 mb-10 max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-card border border-border/50 rounded-2xl p-6 mb-10 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             <Select value={selectedCity} onValueChange={setSelectedCity}>
               <SelectTrigger className="h-12 rounded-xl">
                 <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -106,12 +108,21 @@ export function NearYouSection() {
             </Select>
 
             <Input
+              placeholder="Enter Area / Locality"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              className="h-12 rounded-xl"
+            />
+
+            <Input
               placeholder="Enter Pincode"
               value={pincode}
               onChange={(e) => setPincode(e.target.value)}
               className="h-12 rounded-xl"
             />
+          </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Select value={selectedDistance} onValueChange={setSelectedDistance}>
               <SelectTrigger className="h-12 rounded-xl">
                 <SelectValue placeholder="Distance" />
@@ -120,6 +131,19 @@ export function NearYouSection() {
                 {distances.map((distance) => (
                   <SelectItem key={distance} value={distance}>
                     {distance}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedSort} onValueChange={setSelectedSort}>
+              <SelectTrigger className="h-12 rounded-xl">
+                <SelectValue placeholder="Sort By" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
                   </SelectItem>
                 ))}
               </SelectContent>
