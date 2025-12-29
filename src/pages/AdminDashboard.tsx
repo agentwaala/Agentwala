@@ -34,6 +34,7 @@ import {
   BarChart3,
   Shield,
   Loader2,
+  RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -172,6 +173,31 @@ const AdminDashboard = () => {
     } else {
       toast({
         title: premium ? "Premium status added" : "Premium status removed",
+      });
+      fetchData();
+    }
+  };
+
+  const handleUnrejectAgent = async (agentId: string, agentName: string) => {
+    const { error } = await supabase
+      .from("agents")
+      .update({
+        rejected: false,
+        rejection_reason: null,
+        rejected_at: null,
+      })
+      .eq("id", agentId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to restore agent",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Agent restored",
+        description: `${agentName} has been moved back to the approval queue.`,
       });
       fetchData();
     }
@@ -539,26 +565,44 @@ const AdminDashboard = () => {
                           </td>
                           <td className="p-4">
                             <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant={agent.verified ? "outline" : "default"}
-                                className="rounded-lg"
-                                onClick={() => handleVerifyAgent(agent.id, !agent.verified)}
-                                disabled={agent.rejected}
-                              >
-                                <BadgeCheck className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={agent.premium ? "outline" : "ghost"}
-                                className={`rounded-lg ${
-                                  agent.premium ? "text-amber-600" : ""
-                                }`}
-                                onClick={() => handleSetPremium(agent.id, !agent.premium)}
-                                disabled={agent.rejected}
-                              >
-                                <Crown className="h-3.5 w-3.5" />
-                              </Button>
+                              {agent.rejected ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="rounded-lg"
+                                  onClick={() =>
+                                    handleUnrejectAgent(agent.id, agent.full_name)
+                                  }
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                                  Restore
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant={agent.verified ? "outline" : "default"}
+                                    className="rounded-lg"
+                                    onClick={() =>
+                                      handleVerifyAgent(agent.id, !agent.verified)
+                                    }
+                                  >
+                                    <BadgeCheck className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={agent.premium ? "outline" : "ghost"}
+                                    className={`rounded-lg ${
+                                      agent.premium ? "text-amber-600" : ""
+                                    }`}
+                                    onClick={() =>
+                                      handleSetPremium(agent.id, !agent.premium)
+                                    }
+                                  >
+                                    <Crown className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
