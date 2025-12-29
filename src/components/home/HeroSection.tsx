@@ -73,7 +73,7 @@ export function HeroSection() {
                 </div>
                 <Button 
                   size="lg" 
-                  className="w-full sm:w-auto h-12 px-8 text-base font-semibold"
+                  className="w-full sm:w-auto h-12 px-8 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={handleSearch}
                 >
                   Find Agents
