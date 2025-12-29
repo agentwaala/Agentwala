@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -15,147 +14,195 @@ import {
   Star,
   MapPin,
   Phone,
-  Calendar,
   BadgeCheck,
   Crown,
-  Clock,
   User,
   Heart,
   History,
-  Settings,
   Navigation,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { INDIA_STATES, STATE_DISTRICTS } from "@/data/indiaLocations";
 
-// Mock customer data
-const customerData = {
-  name: "Amit Sharma",
-  email: "amit@example.com",
-  phone: "+91 98765 12345",
-  image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
-  isPremium: false,
-  memberSince: "2024",
-  location: {
-    city: "Bangalore",
-    area: "HSR Layout",
-  },
-  subscription: {
-    type: "Pay per call",
-    perCallCost: 24,
-  },
-  stats: {
-    totalCalls: 23,
-    savedAgents: 8,
-  },
-};
+interface CallWithAgent {
+  id: string;
+  duration_seconds: number | null;
+  category: string | null;
+  created_at: string;
+  agent_id: string;
+  agents: {
+    full_name: string;
+    avatar_url: string | null;
+    categories: string[];
+  } | null;
+  review?: { stars: number } | null;
+}
 
-const callHistory = [
-  { 
-    id: 1, 
-    agent: "Rajesh Kumar", 
-    agentImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-    domain: "Real Estate",
-    date: "Dec 28, 2024", 
-    time: "2:30 PM",
-    duration: "12 min", 
-    rated: true,
-    rating: 5,
-  },
-  { 
-    id: 2, 
-    agent: "Priya Sharma", 
-    agentImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-    domain: "Clothes",
-    date: "Dec 27, 2024", 
-    time: "11:00 AM",
-    duration: "8 min", 
-    rated: false,
-    rating: 0,
-  },
-  { 
-    id: 3, 
-    agent: "Amit Patel", 
-    agentImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
-    domain: "Tiles",
-    date: "Dec 25, 2024", 
-    time: "4:15 PM",
-    duration: "15 min", 
-    rated: true,
-    rating: 4,
-  },
-  { 
-    id: 4, 
-    agent: "Sunita Reddy", 
-    agentImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-    domain: "Beauty Products",
-    date: "Dec 22, 2024", 
-    time: "10:30 AM",
-    duration: "20 min", 
-    rated: true,
-    rating: 5,
-  },
-];
-
-const savedAgents = [
-  {
-    id: 1,
-    name: "Rajesh Kumar",
-    domain: "Real Estate",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-    rating: 4.9,
-    isOnline: true,
-    isVerified: true,
-    isPremium: true,
-    location: "Koramangala, Bangalore",
-  },
-  {
-    id: 2,
-    name: "Priya Sharma",
-    domain: "Clothes",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-    rating: 4.8,
-    isOnline: true,
-    isVerified: true,
-    isPremium: false,
-    location: "HSR Layout, Bangalore",
-  },
-  {
-    id: 3,
-    name: "Sunita Reddy",
-    domain: "Beauty Products",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-    rating: 5.0,
-    isOnline: false,
-    isVerified: true,
-    isPremium: true,
-    location: "Indiranagar, Bangalore",
-  },
-];
-
-const cities = ["Bangalore", "Mumbai", "Delhi", "Chennai", "Hyderabad", "Pune"];
+interface SavedAgentData {
+  id: string;
+  agent_id: string;
+  agents: {
+    id: string;
+    full_name: string;
+    avatar_url: string | null;
+    categories: string[];
+    city: string | null;
+    available: boolean;
+    verified: boolean;
+    premium: boolean;
+  };
+}
 
 const CustomerDashboard = () => {
-  const [selectedCity, setSelectedCity] = useState(customerData.location.city);
-  const [ratingCall, setRatingCall] = useState<number | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; avatar_url: string | null } | null>(null);
+  const [calls, setCalls] = useState<CallWithAgent[]>([]);
+  const [savedAgents, setSavedAgents] = useState<SavedAgentData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedState, setSelectedState] = useState('');
+  const [ratingCall, setRatingCall] = useState<string | null>(null);
   const [hoverRating, setHoverRating] = useState(0);
 
-  const renderStars = (rating: number, interactive = false, callId?: number) => {
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name, email, avatar_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (profileData) setProfile(profileData);
+
+      // Fetch calls with agent info
+      const { data: callsData } = await supabase
+        .from('calls')
+        .select(`
+          id,
+          duration_seconds,
+          category,
+          created_at,
+          agent_id,
+          agents (
+            full_name,
+            avatar_url,
+            categories
+          )
+        `)
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (callsData) {
+        // Fetch reviews for these calls
+        const callsWithReviews = await Promise.all(
+          callsData.map(async (call) => {
+            const { data: review } = await supabase
+              .from('reviews')
+              .select('stars')
+              .eq('customer_id', user.id)
+              .eq('agent_id', call.agent_id)
+              .maybeSingle();
+            return { ...call, review };
+          })
+        );
+        setCalls(callsWithReviews as CallWithAgent[]);
+      }
+
+      // Fetch saved agents
+      const { data: savedData } = await supabase
+        .from('saved_agents')
+        .select(`
+          id,
+          agent_id,
+          agents (
+            id,
+            full_name,
+            avatar_url,
+            categories,
+            city,
+            available,
+            verified,
+            premium
+          )
+        `)
+        .eq('customer_id', user.id);
+      
+      if (savedData) setSavedAgents(savedData as unknown as SavedAgentData[]);
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRating = async (agentId: string, stars: number) => {
+    if (!user) return;
+    
+    const { error } = await supabase
+      .from('reviews')
+      .upsert({
+        customer_id: user.id,
+        agent_id: agentId,
+        stars,
+      });
+    
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to submit rating',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Rating submitted',
+      });
+      setRatingCall(null);
+      fetchData();
+    }
+  };
+
+  const renderStars = (rating: number, interactive = false, agentId?: string) => {
     return (
       <div className="flex items-center gap-0.5">
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
             className={`h-4 w-4 cursor-pointer transition-colors ${
-              star <= (interactive && callId === ratingCall ? hoverRating : rating)
+              star <= (interactive && agentId === ratingCall ? (hoverRating || rating) : rating)
                 ? "fill-primary text-primary"
                 : "fill-muted text-muted hover:fill-primary/50 hover:text-primary/50"
             }`}
-            onMouseEnter={() => interactive && callId === ratingCall && setHoverRating(star)}
+            onMouseEnter={() => interactive && setHoverRating(star)}
             onMouseLeave={() => interactive && setHoverRating(0)}
+            onClick={() => interactive && agentId && handleRating(agentId, star)}
           />
         ))}
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -179,48 +226,59 @@ const CustomerDashboard = () => {
                   <History className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold">Call History</h2>
                 </div>
-                <div className="space-y-4">
-                  {callHistory.map((call) => (
-                    <div key={call.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                      <div className="flex items-center gap-4">
-                        <img 
-                          src={call.agentImage}
-                          alt={call.agent}
-                          className="w-12 h-12 rounded-xl object-cover"
-                        />
-                        <div>
-                          <p className="font-medium">{call.agent}</p>
-                          <p className="text-sm text-primary">{call.domain}</p>
-                          <p className="text-xs text-muted-foreground">{call.date} • {call.time} • {call.duration}</p>
+                {calls.length > 0 ? (
+                  <div className="space-y-4">
+                    {calls.map((call) => (
+                      <div key={call.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {call.agents?.full_name?.charAt(0) || 'A'}
+                          </div>
+                          <div>
+                            <p className="font-medium">{call.agents?.full_name || 'Unknown Agent'}</p>
+                            <p className="text-sm text-primary">{call.category || call.agents?.categories?.[0] || 'General'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(call.created_at).toLocaleDateString()} • 
+                              {call.duration_seconds ? ` ${Math.round(call.duration_seconds / 60)} min` : ' Pending'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {call.review ? (
+                            <div className="flex flex-col items-end gap-1">
+                              {renderStars(call.review.stars)}
+                              <span className="text-xs text-muted-foreground">Rated</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-end gap-1">
+                              {ratingCall === call.agent_id ? (
+                                renderStars(0, true, call.agent_id)
+                              ) : (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="rounded-lg"
+                                  onClick={() => setRatingCall(call.agent_id)}
+                                >
+                                  <Star className="h-3.5 w-3.5 mr-1" />
+                                  Rate
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        {call.rated ? (
-                          <div className="flex flex-col items-end gap-1">
-                            {renderStars(call.rating)}
-                            <span className="text-xs text-muted-foreground">Rated</span>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-end gap-1">
-                            {ratingCall === call.id ? (
-                              renderStars(0, true, call.id)
-                            ) : (
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="rounded-lg"
-                                onClick={() => setRatingCall(call.id)}
-                              >
-                                <Star className="h-3.5 w-3.5 mr-1" />
-                                Rate
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No calls yet</p>
+                    <Button variant="link" asChild className="mt-2">
+                      <Link to="/agents">Find agents</Link>
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Saved Agents */}
@@ -229,44 +287,45 @@ const CustomerDashboard = () => {
                   <Heart className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold">Saved Agents</h2>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {savedAgents.map((agent) => (
-                    <Link key={agent.id} to={`/agents/${agent.id}`}>
-                      <div className="p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
-                        <div className="flex items-start gap-3">
-                          <div className="relative shrink-0">
-                            <img 
-                              src={agent.image}
-                              alt={agent.name}
-                              className="w-12 h-12 rounded-xl object-cover"
-                            />
-                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-card ${
-                              agent.isOnline ? "bg-green-500" : "bg-muted-foreground/50"
-                            }`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <p className="font-medium truncate">{agent.name}</p>
-                              {agent.isVerified && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
-                              {agent.isPremium && <Crown className="h-4 w-4 text-amber-500 shrink-0" />}
-                            </div>
-                            <p className="text-sm text-primary">{agent.domain}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex items-center gap-0.5">
-                                <Star className="h-3 w-3 fill-primary text-primary" />
-                                <span className="text-xs font-medium">{agent.rating}</span>
+                {savedAgents.length > 0 ? (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {savedAgents.map((saved) => (
+                      <Link key={saved.id} to={`/agents/${saved.agents.id}`}>
+                        <div className="p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                          <div className="flex items-start gap-3">
+                            <div className="relative shrink-0">
+                              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                {saved.agents.full_name?.charAt(0) || 'A'}
                               </div>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <span className={`text-xs ${agent.isOnline ? "text-green-600" : "text-muted-foreground"}`}>
-                                {agent.isOnline ? "Online" : "Offline"}
+                              <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-card ${
+                                saved.agents.available ? "bg-green-500" : "bg-muted-foreground/50"
+                              }`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="font-medium truncate">{saved.agents.full_name}</p>
+                                {saved.agents.verified && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+                                {saved.agents.premium && <Crown className="h-4 w-4 text-amber-500 shrink-0" />}
+                              </div>
+                              <p className="text-sm text-primary">{saved.agents.categories?.[0] || 'Agent'}</p>
+                              <span className={`text-xs ${saved.agents.available ? "text-green-600" : "text-muted-foreground"}`}>
+                                {saved.agents.available ? "Online" : "Offline"}
                               </span>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Heart className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No saved agents</p>
+                    <Button variant="link" asChild className="mt-2">
+                      <Link to="/agents">Browse agents</Link>
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -275,27 +334,21 @@ const CustomerDashboard = () => {
               {/* Profile Card */}
               <div className="bg-card border border-border/50 rounded-2xl p-6">
                 <div className="flex flex-col items-center text-center mb-6">
-                  <img 
-                    src={customerData.image} 
-                    alt={customerData.name}
-                    className="w-20 h-20 rounded-2xl object-cover mb-4"
-                  />
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-lg">{customerData.name}</h3>
-                    {customerData.isPremium && <Crown className="h-5 w-5 text-amber-500" />}
+                  <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary mb-4">
+                    {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                   </div>
-                  <p className="text-sm text-muted-foreground">{customerData.email}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Member since {customerData.memberSince}</p>
+                  <h3 className="font-semibold text-lg">{profile?.full_name || 'Customer'}</h3>
+                  <p className="text-sm text-muted-foreground">{profile?.email || user?.email}</p>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                     <span className="text-sm text-muted-foreground">Total Calls</span>
-                    <span className="font-semibold">{customerData.stats.totalCalls}</span>
+                    <span className="font-semibold">{calls.length}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                     <span className="text-sm text-muted-foreground">Saved Agents</span>
-                    <span className="font-semibold">{customerData.stats.savedAgents}</span>
+                    <span className="font-semibold">{savedAgents.length}</span>
                   </div>
                 </div>
               </div>
@@ -306,19 +359,10 @@ const CustomerDashboard = () => {
                   <Crown className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold">Subscription</h3>
                 </div>
-                <div className="p-4 bg-muted/50 rounded-xl mb-4">
-                  <p className="font-medium">{customerData.subscription.type}</p>
-                  <p className="text-sm text-muted-foreground">₹{customerData.subscription.perCallCost} per call</p>
+                <div className="p-4 bg-muted/50 rounded-xl">
+                  <p className="font-medium">Free for now</p>
+                  <p className="text-sm text-muted-foreground">No payment required</p>
                 </div>
-                <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 mb-4">
-                  <p className="text-sm font-medium mb-1">Upgrade to Monthly</p>
-                  <p className="text-2xl font-bold text-primary">₹399<span className="text-sm font-normal">/month</span></p>
-                  <p className="text-xs text-muted-foreground">Unlimited calls to all agents</p>
-                </div>
-                <Button className="w-full rounded-xl">
-                  <Crown className="h-4 w-4 mr-2" />
-                  Upgrade Now
-                </Button>
               </div>
 
               {/* Location Preferences */}
@@ -329,21 +373,23 @@ const CustomerDashboard = () => {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm text-muted-foreground mb-2 block">Preferred City</label>
-                    <Select value={selectedCity} onValueChange={setSelectedCity}>
+                    <label className="text-sm text-muted-foreground mb-2 block">Preferred State</label>
+                    <Select value={selectedState} onValueChange={setSelectedState}>
                       <SelectTrigger className="rounded-xl">
-                        <SelectValue />
+                        <SelectValue placeholder="Select state" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {cities.map((city) => (
-                          <SelectItem key={city} value={city}>{city}</SelectItem>
+                      <SelectContent className="bg-popover">
+                        {INDIA_STATES.map((state) => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button variant="outline" className="w-full rounded-xl">
-                    <Navigation className="h-4 w-4 mr-2" />
-                    Use Current Location
+                  <Button variant="outline" className="w-full rounded-xl" asChild>
+                    <Link to="/agents">
+                      <Navigation className="h-4 w-4 mr-2" />
+                      Find Nearby Agents
+                    </Link>
                   </Button>
                 </div>
               </div>

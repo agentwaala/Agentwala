@@ -1,13 +1,24 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, LogOut, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, role, signOut, loading } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,6 +36,17 @@ export function Navbar() {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const getDashboardPath = () => {
+    if (role === 'admin') return '/admin';
+    if (role === 'agent') return '/agent-dashboard';
+    return '/customer-dashboard';
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -63,14 +85,54 @@ export function Navbar() {
         {/* Right Side Actions */}
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <div className="hidden sm:flex items-center gap-2">
-            <Button variant="ghost" size="sm">
-              Log in
-            </Button>
-            <Button size="sm" className="neon-glow">
-              Get Started
-            </Button>
-          </div>
+          
+          {!loading && (
+            <div className="hidden sm:flex items-center gap-2">
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email || ''} />
+                        <AvatarFallback>
+                          {user.email?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 bg-popover" align="end" forceMount>
+                    <div className="flex flex-col space-y-1 p-2">
+                      <p className="text-sm font-medium">{user.user_metadata?.full_name || user.email}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{role || 'User'}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate(getDashboardPath())}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate(getDashboardPath())}>
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>
+                    Log in
+                  </Button>
+                  <Button size="sm" className="neon-glow" onClick={() => navigate('/auth')}>
+                    Get Started
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Mobile Menu Button */}
           <Button
@@ -103,12 +165,43 @@ export function Navbar() {
               </Link>
             ))}
             <div className="flex gap-2 pt-4 mt-2 border-t border-border/40">
-              <Button variant="outline" className="flex-1" size="sm">
-                Log in
-              </Button>
-              <Button className="flex-1 neon-glow" size="sm">
-                Get Started
-              </Button>
+              {user ? (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1" 
+                    size="sm"
+                    onClick={() => { setIsOpen(false); navigate(getDashboardPath()); }}
+                  >
+                    Dashboard
+                  </Button>
+                  <Button 
+                    className="flex-1" 
+                    size="sm"
+                    onClick={() => { setIsOpen(false); handleSignOut(); }}
+                  >
+                    Sign out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1" 
+                    size="sm"
+                    onClick={() => { setIsOpen(false); navigate('/auth'); }}
+                  >
+                    Log in
+                  </Button>
+                  <Button 
+                    className="flex-1 neon-glow" 
+                    size="sm"
+                    onClick={() => { setIsOpen(false); navigate('/auth'); }}
+                  >
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
           </nav>
         </div>

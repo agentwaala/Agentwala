@@ -1,10 +1,9 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -16,96 +15,215 @@ import {
 } from "@/components/ui/select";
 import {
   Star,
-  MapPin,
   Phone,
-  Calendar,
   BadgeCheck,
   Crown,
-  Clock,
   TrendingUp,
-  Users,
   Edit,
   Save,
   Circle,
-  IndianRupee,
-  Settings,
   History,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { INDIA_STATES, STATE_DISTRICTS, AGENT_CATEGORIES } from "@/data/indiaLocations";
 
-// Mock agent data
-const agentData = {
-  id: 1,
-  name: "Rajesh Kumar",
-  email: "rajesh@example.com",
-  phone: "+91 98765 43210",
-  domain: "Real Estate",
-  bio: "Luxury property specialist with 15+ years of experience",
-  image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-  isOnline: true,
-  isVerified: true,
-  isPremium: true,
-  rating: 4.9,
-  totalReviews: 127,
-  location: {
-    city: "Bangalore",
-    area: "Koramangala",
-    pincode: "560034",
-  },
-  languages: ["Hindi", "English", "Kannada"],
-  pricing: {
-    perCall: 24,
-  },
-  earnings: {
-    today: 1200,
-    thisWeek: 8400,
-    thisMonth: 36000,
-    total: 450000,
-  },
-  stats: {
-    totalCalls: 450,
-    completedDeals: 127,
-    responseRate: 98,
-  },
-  verificationStatus: "verified",
-  subscriptionStatus: "active",
-  subscriptionExpiry: "2025-12-31",
-};
+interface AgentData {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  avatar_url: string | null;
+  categories: string[];
+  state: string | null;
+  city: string | null;
+  area: string | null;
+  pincode: string | null;
+  description: string | null;
+  offers: string | null;
+  available: boolean;
+  verified: boolean;
+  premium: boolean;
+  profile_complete: boolean;
+}
 
-const callHistory = [
-  { id: 1, customer: "Amit S.", date: "Dec 28, 2024", duration: "12 min", rating: 5, domain: "Property Inquiry" },
-  { id: 2, customer: "Priya R.", date: "Dec 28, 2024", duration: "8 min", rating: 5, domain: "Commercial Space" },
-  { id: 3, customer: "Vikram K.", date: "Dec 27, 2024", duration: "15 min", rating: 4, domain: "Rental Assistance" },
-  { id: 4, customer: "Sneha M.", date: "Dec 27, 2024", duration: "20 min", rating: 5, domain: "Villa Showing" },
-  { id: 5, customer: "Rahul G.", date: "Dec 26, 2024", duration: "10 min", rating: 5, domain: "Property Inquiry" },
-];
-
-const cities = ["Bangalore", "Mumbai", "Delhi", "Chennai", "Hyderabad", "Pune"];
+interface CallData {
+  id: string;
+  customer_id: string;
+  duration_seconds: number | null;
+  category: string | null;
+  created_at: string;
+}
 
 const AgentDashboard = () => {
-  const [isOnline, setIsOnline] = useState(agentData.isOnline);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [agentData, setAgentData] = useState<AgentData | null>(null);
+  const [calls, setCalls] = useState<CallData[]>([]);
+  const [reviews, setReviews] = useState<{ stars: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: agentData.name,
-    bio: agentData.bio,
-    city: agentData.location.city,
-    area: agentData.location.area,
-    pincode: agentData.location.pincode,
+  
+  const [formData, setFormData] = useState({
+    full_name: '',
+    phone: '',
+    description: '',
+    offers: '',
+    state: '',
+    city: '',
+    area: '',
+    pincode: '',
+    categories: [] as string[],
   });
 
-  const renderStars = (rating: number) => {
+  useEffect(() => {
+    if (user) {
+      fetchAgentData();
+    }
+  }, [user]);
+
+  const fetchAgentData = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: agent, error } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (agent) {
+        setAgentData(agent);
+        setFormData({
+          full_name: agent.full_name || '',
+          phone: agent.phone || '',
+          description: agent.description || '',
+          offers: agent.offers || '',
+          state: agent.state || '',
+          city: agent.city || '',
+          area: agent.area || '',
+          pincode: agent.pincode || '',
+          categories: agent.categories || [],
+        });
+
+        // Fetch calls
+        const { data: callsData } = await supabase
+          .from('calls')
+          .select('*')
+          .eq('agent_id', agent.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (callsData) setCalls(callsData);
+
+        // Fetch reviews
+        const { data: reviewsData } = await supabase
+          .from('reviews')
+          .select('stars')
+          .eq('agent_id', agent.id);
+        
+        if (reviewsData) setReviews(reviewsData);
+      }
+    } catch (error) {
+      console.error('Error fetching agent data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load agent data',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleAvailability = async () => {
+    if (!agentData) return;
+    
+    const newAvailable = !agentData.available;
+    
+    const { error } = await supabase
+      .from('agents')
+      .update({ available: newAvailable })
+      .eq('id', agentData.id);
+    
+    if (!error) {
+      setAgentData({ ...agentData, available: newAvailable });
+      toast({
+        title: newAvailable ? 'You are now available' : 'You are now unavailable',
+      });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!agentData) return;
+    
+    setSaving(true);
+    
+    const isProfileComplete = formData.full_name && formData.phone && 
+      formData.state && formData.city && formData.categories.length > 0;
+    
+    const { error } = await supabase
+      .from('agents')
+      .update({
+        ...formData,
+        profile_complete: isProfileComplete,
+      })
+      .eq('id', agentData.id);
+    
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save profile',
+        variant: 'destructive',
+      });
+    } else {
+      setAgentData({ 
+        ...agentData, 
+        ...formData, 
+        profile_complete: isProfileComplete 
+      });
+      setIsEditing(false);
+      toast({
+        title: 'Profile saved',
+        description: isProfileComplete ? 'Your profile is now visible to customers' : 'Complete all required fields to appear in listings',
+      });
+    }
+    
+    setSaving(false);
+  };
+
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length 
+    : 0;
+
+  const renderStars = (rating: number) => (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`h-4 w-4 ${
+            star <= rating ? "fill-primary text-primary" : "fill-muted text-muted"
+          }`}
+        />
+      ))}
+    </div>
+  );
+
+  const districts = formData.state ? STATE_DISTRICTS[formData.state] || [] : [];
+
+  if (loading) {
     return (
-      <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-4 w-4 ${
-              star <= rating ? "fill-primary text-primary" : "fill-muted text-muted"
-            }`}
-          />
-        ))}
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
-  };
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -122,41 +240,45 @@ const AgentDashboard = () => {
             {/* Availability Toggle */}
             <div className="flex items-center gap-4 p-4 bg-card border border-border/50 rounded-2xl">
               <div className="flex items-center gap-2">
-                <Circle className={`h-3 w-3 ${isOnline ? "fill-green-500 text-green-500" : "fill-muted-foreground text-muted-foreground"}`} />
-                <span className="font-medium">{isOnline ? "Available Now" : "Currently Unavailable"}</span>
+                <Circle className={`h-3 w-3 ${agentData?.available ? "fill-green-500 text-green-500" : "fill-muted-foreground text-muted-foreground"}`} />
+                <span className="font-medium">{agentData?.available ? "Available Now" : "Currently Unavailable"}</span>
               </div>
               <Switch
-                checked={isOnline}
-                onCheckedChange={setIsOnline}
+                checked={agentData?.available || false}
+                onCheckedChange={handleToggleAvailability}
+                disabled={!agentData?.profile_complete}
               />
             </div>
           </div>
 
+          {!agentData?.profile_complete && (
+            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+              <p className="text-amber-600 font-medium">Complete your profile to appear in agent listings</p>
+              <p className="text-sm text-muted-foreground">Fill in all required fields: name, phone, location, and at least one category</p>
+            </div>
+          )}
+
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Earnings Summary */}
+              {/* Stats */}
               <div className="bg-card border border-border/50 rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-6">
                   <TrendingUp className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Earnings Summary</h2>
+                  <h2 className="text-lg font-semibold">Statistics</h2>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="p-4 bg-muted/50 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-primary">₹{agentData.earnings.today}</p>
-                    <p className="text-sm text-muted-foreground">Today</p>
+                    <p className="text-2xl font-bold text-primary">{calls.length}</p>
+                    <p className="text-sm text-muted-foreground">Total Calls</p>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-xl text-center">
-                    <p className="text-2xl font-bold">₹{agentData.earnings.thisWeek.toLocaleString()}</p>
-                    <p className="text-sm text-muted-foreground">This Week</p>
+                    <p className="text-2xl font-bold">{reviews.length}</p>
+                    <p className="text-sm text-muted-foreground">Reviews</p>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-xl text-center">
-                    <p className="text-2xl font-bold">₹{agentData.earnings.thisMonth.toLocaleString()}</p>
-                    <p className="text-sm text-muted-foreground">This Month</p>
-                  </div>
-                  <div className="p-4 bg-muted/50 rounded-xl text-center">
-                    <p className="text-2xl font-bold">₹{(agentData.earnings.total / 1000).toFixed(0)}K</p>
-                    <p className="text-sm text-muted-foreground">All Time</p>
+                    <div className="flex justify-center mb-1">{renderStars(Math.round(averageRating))}</div>
+                    <p className="text-sm text-muted-foreground">Avg Rating</p>
                   </div>
                 </div>
               </div>
@@ -167,27 +289,31 @@ const AgentDashboard = () => {
                   <History className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold">Recent Leads / Calls</h2>
                 </div>
-                <div className="space-y-4">
-                  {callHistory.map((call) => (
-                    <div key={call.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Phone className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{call.customer}</p>
-                          <p className="text-sm text-muted-foreground">{call.domain}</p>
+                {calls.length > 0 ? (
+                  <div className="space-y-4">
+                    {calls.map((call) => (
+                      <div key={call.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Phone className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{call.category || 'General Inquiry'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(call.created_at).toLocaleDateString()} • 
+                              {call.duration_seconds ? ` ${Math.round(call.duration_seconds / 60)} min` : ' Pending'}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-2 mb-1">
-                          {renderStars(call.rating)}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{call.date} • {call.duration}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No calls yet</p>
+                  </div>
+                )}
               </div>
 
               {/* Profile Edit Section */}
@@ -200,31 +326,74 @@ const AgentDashboard = () => {
                   <Button 
                     variant={isEditing ? "default" : "outline"} 
                     size="sm"
-                    onClick={() => setIsEditing(!isEditing)}
+                    onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
+                    disabled={saving}
                   >
-                    {isEditing ? <Save className="h-4 w-4 mr-2" /> : <Edit className="h-4 w-4 mr-2" />}
-                    {isEditing ? "Save Changes" : "Edit Profile"}
+                    {saving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isEditing ? (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Profile
+                      </>
+                    )}
                   </Button>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-muted-foreground mb-2 block">Full Name</label>
+                    <label className="text-sm text-muted-foreground mb-2 block">Full Name *</label>
                     <Input 
-                      value={profileData.name}
-                      onChange={(e) => setProfileData({...profileData, name: e.target.value})}
+                      value={formData.full_name}
+                      onChange={(e) => setFormData({...formData, full_name: e.target.value})}
                       disabled={!isEditing}
                       className="rounded-xl"
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-muted-foreground mb-2 block">City</label>
-                    <Select value={profileData.city} onValueChange={(val) => setProfileData({...profileData, city: val})} disabled={!isEditing}>
+                    <label className="text-sm text-muted-foreground mb-2 block">Phone Number *</label>
+                    <Input 
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      disabled={!isEditing}
+                      placeholder="+91 98765 43210"
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-2 block">State *</label>
+                    <Select 
+                      value={formData.state} 
+                      onValueChange={(val) => setFormData({...formData, state: val, city: ''})} 
+                      disabled={!isEditing}
+                    >
                       <SelectTrigger className="rounded-xl">
-                        <SelectValue />
+                        <SelectValue placeholder="Select state" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {cities.map((city) => (
+                      <SelectContent className="bg-popover">
+                        {INDIA_STATES.map((state) => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-2 block">City/District *</label>
+                    <Select 
+                      value={formData.city} 
+                      onValueChange={(val) => setFormData({...formData, city: val})} 
+                      disabled={!isEditing || !formData.state}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Select city" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        {districts.map((city) => (
                           <SelectItem key={city} value={city}>{city}</SelectItem>
                         ))}
                       </SelectContent>
@@ -233,8 +402,8 @@ const AgentDashboard = () => {
                   <div>
                     <label className="text-sm text-muted-foreground mb-2 block">Area / Locality</label>
                     <Input 
-                      value={profileData.area}
-                      onChange={(e) => setProfileData({...profileData, area: e.target.value})}
+                      value={formData.area}
+                      onChange={(e) => setFormData({...formData, area: e.target.value})}
                       disabled={!isEditing}
                       className="rounded-xl"
                     />
@@ -242,20 +411,48 @@ const AgentDashboard = () => {
                   <div>
                     <label className="text-sm text-muted-foreground mb-2 block">Pincode</label>
                     <Input 
-                      value={profileData.pincode}
-                      onChange={(e) => setProfileData({...profileData, pincode: e.target.value})}
+                      value={formData.pincode}
+                      onChange={(e) => setFormData({...formData, pincode: e.target.value})}
                       disabled={!isEditing}
                       className="rounded-xl"
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-sm text-muted-foreground mb-2 block">Bio / Tagline</label>
+                    <label className="text-sm text-muted-foreground mb-2 block">Categories *</label>
+                    <Select 
+                      value={formData.categories[0] || ''} 
+                      onValueChange={(val) => setFormData({...formData, categories: [val]})} 
+                      disabled={!isEditing}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        {AGENT_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-sm text-muted-foreground mb-2 block">Bio / Description</label>
                     <Textarea 
-                      value={profileData.bio}
-                      onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
                       disabled={!isEditing}
                       className="rounded-xl resize-none"
                       rows={3}
+                      placeholder="Tell customers about your expertise..."
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-sm text-muted-foreground mb-2 block">Offers / Discounts</label>
+                    <Input 
+                      value={formData.offers}
+                      onChange={(e) => setFormData({...formData, offers: e.target.value})}
+                      disabled={!isEditing}
+                      placeholder="e.g., 10% off first order"
+                      className="rounded-xl"
                     />
                   </div>
                 </div>
@@ -268,37 +465,29 @@ const AgentDashboard = () => {
               <div className="bg-card border border-border/50 rounded-2xl p-6">
                 <div className="flex flex-col items-center text-center mb-6">
                   <div className="relative mb-4">
-                    <img 
-                      src={agentData.image} 
-                      alt={agentData.name}
-                      className="w-24 h-24 rounded-2xl object-cover"
-                    />
+                    <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
+                      {formData.full_name?.charAt(0) || 'A'}
+                    </div>
                     <div className={`absolute -bottom-2 -right-2 w-6 h-6 rounded-full border-4 border-card ${
-                      isOnline ? "bg-green-500" : "bg-muted-foreground/50"
+                      agentData?.available ? "bg-green-500" : "bg-muted-foreground/50"
                     }`} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-lg">{agentData.name}</h3>
-                    {agentData.isVerified && <BadgeCheck className="h-5 w-5 text-primary" />}
-                    {agentData.isPremium && <Crown className="h-5 w-5 text-amber-500" />}
+                    <h3 className="font-semibold text-lg">{formData.full_name || 'Your Name'}</h3>
+                    {agentData?.verified && <BadgeCheck className="h-5 w-5 text-primary" />}
+                    {agentData?.premium && <Crown className="h-5 w-5 text-amber-500" />}
                   </div>
-                  <p className="text-primary text-sm font-medium">{agentData.domain}</p>
+                  <p className="text-primary text-sm font-medium">{formData.categories[0] || 'Select category'}</p>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                     <span className="text-sm text-muted-foreground">Rating</span>
-                    <div className="flex items-center gap-1">
-                      {renderStars(Math.round(agentData.rating))}
-                    </div>
+                    {renderStars(Math.round(averageRating))}
                   </div>
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                     <span className="text-sm text-muted-foreground">Total Calls</span>
-                    <span className="font-semibold">{agentData.stats.totalCalls}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-                    <span className="text-sm text-muted-foreground">Response Rate</span>
-                    <span className="font-semibold text-green-600">{agentData.stats.responseRate}%</span>
+                    <span className="font-semibold">{calls.length}</span>
                   </div>
                 </div>
               </div>
@@ -309,38 +498,32 @@ const AgentDashboard = () => {
                   <BadgeCheck className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold">Verification Status</h3>
                 </div>
-                <div className="p-4 bg-green-500/10 rounded-xl border border-green-500/20">
-                  <div className="flex items-center gap-2">
-                    <BadgeCheck className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-green-600">Verified Agent</span>
+                {agentData?.verified ? (
+                  <div className="p-4 bg-green-500/10 rounded-xl border border-green-500/20">
+                    <div className="flex items-center gap-2">
+                      <BadgeCheck className="h-5 w-5 text-green-600" />
+                      <span className="font-medium text-green-600">Verified Agent</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">Your identity is verified</p>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">Your identity is verified</p>
-                </div>
+                ) : (
+                  <div className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                    <p className="text-sm text-amber-600">Pending verification</p>
+                    <p className="text-xs text-muted-foreground mt-1">Complete your profile to get verified</p>
+                  </div>
+                )}
               </div>
 
-              {/* Subscription Status */}
+              {/* Premium Status */}
               <div className="bg-card border border-border/50 rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Crown className="h-5 w-5 text-amber-500" />
                   <h3 className="font-semibold">Premium Status</h3>
                 </div>
-                {agentData.isPremium ? (
-                  <div className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-5 w-5 text-amber-600" />
-                      <span className="font-medium text-amber-600">Premium Active</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">Expires: {agentData.subscriptionExpiry}</p>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-3">Upgrade to get priority ranking and more visibility</p>
-                    <Button className="w-full rounded-xl">
-                      <Crown className="h-4 w-4 mr-2" />
-                      Upgrade to Premium
-                    </Button>
-                  </div>
-                )}
+                <div className="p-4 bg-muted/50 rounded-xl">
+                  <p className="text-sm font-medium">Free for now</p>
+                  <p className="text-xs text-muted-foreground mt-1">Premium features coming soon</p>
+                </div>
               </div>
             </div>
           </div>
