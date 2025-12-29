@@ -3,8 +3,8 @@ import { Footer } from "@/components/layout/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { DomainsSection } from "@/components/home/DomainsSection";
 import { HowItWorksSection } from "@/components/home/HowItWorksSection";
+import { NearYouSection } from "@/components/home/NearYouSection";
 import { FeaturedAgents } from "@/components/home/FeaturedAgents";
-import { PricingSection } from "@/components/home/PricingSection";
 import { CTASection } from "@/components/home/CTASection";
 
 const Index = () => {
@@ -15,8 +15,8 @@ const Index = () => {
         <HeroSection />
         <DomainsSection />
         <HowItWorksSection />
+        <NearYouSection />
         <FeaturedAgents />
-        <PricingSection />
         <CTASection />
       </main>
       <Footer />

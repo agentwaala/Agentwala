@@ -1,25 +1,25 @@
-import { Search, BadgeCheck, Phone, Star } from "lucide-react";
+import { Search, BadgeCheck, Phone, Handshake } from "lucide-react";
 
 const steps = [
   {
     icon: Search,
-    title: "Search for Agent",
-    description: "Browse 11+ categories and find the right agent for your needs",
+    title: "Search Agent",
+    description: "Browse verified agents across 11+ categories in your city",
   },
   {
     icon: BadgeCheck,
-    title: "Verify Profile",
-    description: "All agents are verified with ₹1,000 verification fee",
+    title: "Check Profile",
+    description: "View verified badges, ratings, and availability status",
   },
   {
     icon: Phone,
-    title: "Connect Instantly",
-    description: "Pay ₹24/call or subscribe for ₹399/month unlimited access",
+    title: "Connect",
+    description: "Call directly or schedule a call at your convenience",
   },
   {
-    icon: Star,
-    title: "Leave Review",
-    description: "Rate your experience and help others find great agents",
+    icon: Handshake,
+    title: "Get it Done",
+    description: "Complete your deal with trusted, local expertise",
   },
 ];
 
