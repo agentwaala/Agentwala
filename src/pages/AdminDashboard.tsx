@@ -3,6 +3,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -12,13 +13,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Star,
   MapPin,
   BadgeCheck,
   Crown,
   Users,
   TrendingUp,
-  Phone,
   Search,
   Check,
   X,
@@ -45,6 +53,9 @@ interface AgentData {
   verified: boolean;
   premium: boolean;
   profile_complete: boolean;
+  rejected: boolean;
+  rejection_reason: string | null;
+  rejected_at: string | null;
   created_at: string;
 }
 
@@ -63,6 +74,12 @@ const AdminDashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [activeTab, setActiveTab] = useState<"overview" | "approvals" | "agents">("overview");
 
+  // Rejection dialog state
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectingAgent, setRejectingAgent] = useState<AgentData | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -71,20 +88,22 @@ const AdminDashboard = () => {
     try {
       // Fetch all agents
       const { data: agentsData, error: agentsError } = await supabase
-        .from('agents')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("agents")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (agentsError) throw agentsError;
-      
-      if (agentsData) {
-        setAgents(agentsData);
 
-        // Show all unverified agents in the approval queue (even if profile isn't complete yet).
-        setPendingAgents(agentsData.filter((a) => !a.verified));
+      if (agentsData) {
+        setAgents(agentsData as AgentData[]);
+
+        // Show unverified and NOT rejected agents in the approval queue
+        setPendingAgents(
+          (agentsData as AgentData[]).filter((a) => !a.verified && !a.rejected)
+        );
 
         setStats({
-          totalUsers: 0, // Would need to count from auth.users or profiles
+          totalUsers: 0,
           totalAgents: agentsData.length,
           activeAgents: agentsData.filter((a) => a.available).length,
           totalCustomers: 0,
@@ -93,26 +112,25 @@ const AdminDashboard = () => {
 
       // Get counts
       const { count: profileCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-      
-      const { count: customerCount } = await supabase
-        .from('user_roles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'customer');
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
 
-      setStats(prev => ({
+      const { count: customerCount } = await supabase
+        .from("user_roles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "customer");
+
+      setStats((prev) => ({
         ...prev,
         totalUsers: profileCount || 0,
         totalCustomers: customerCount || 0,
       }));
-
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to load admin data',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to load admin data",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -121,19 +139,19 @@ const AdminDashboard = () => {
 
   const handleVerifyAgent = async (agentId: string, verified: boolean) => {
     const { error } = await supabase
-      .from('agents')
+      .from("agents")
       .update({ verified })
-      .eq('id', agentId);
+      .eq("id", agentId);
 
     if (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to update agent',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to update agent",
+        variant: "destructive",
       });
     } else {
       toast({
-        title: verified ? 'Agent verified' : 'Agent unverified',
+        title: verified ? "Agent verified" : "Agent unverified",
       });
       fetchData();
     }
@@ -141,27 +159,79 @@ const AdminDashboard = () => {
 
   const handleSetPremium = async (agentId: string, premium: boolean) => {
     const { error } = await supabase
-      .from('agents')
+      .from("agents")
       .update({ premium })
-      .eq('id', agentId);
+      .eq("id", agentId);
 
     if (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to update agent',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to update agent",
+        variant: "destructive",
       });
     } else {
       toast({
-        title: premium ? 'Premium status added' : 'Premium status removed',
+        title: premium ? "Premium status added" : "Premium status removed",
       });
       fetchData();
     }
   };
 
+  const openRejectDialog = (agent: AgentData) => {
+    setRejectingAgent(agent);
+    setRejectionReason("");
+    setRejectDialogOpen(true);
+  };
+
+  const handleRejectAgent = async () => {
+    if (!rejectingAgent) return;
+
+    if (!rejectionReason.trim()) {
+      toast({
+        title: "Rejection reason required",
+        description: "Please provide a reason for rejecting this agent.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRejecting(true);
+
+    const { error } = await supabase
+      .from("agents")
+      .update({
+        rejected: true,
+        rejection_reason: rejectionReason.trim(),
+        rejected_at: new Date().toISOString(),
+      })
+      .eq("id", rejectingAgent.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reject agent",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Agent rejected",
+        description: `${rejectingAgent.full_name} has been rejected.`,
+      });
+      setRejectDialogOpen(false);
+      setRejectingAgent(null);
+      setRejectionReason("");
+      fetchData();
+    }
+
+    setIsRejecting(false);
+  };
+
   const filteredAgents = agents.filter((agent) => {
-    const matchesSearch = agent.full_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "All Categories" || 
+    const matchesSearch = agent.full_name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "All Categories" ||
       agent.categories?.includes(selectedCategory);
     return matchesSearch && matchesCategory;
   });
@@ -199,9 +269,11 @@ const AdminDashboard = () => {
                 <Shield className="h-6 w-6 text-primary" />
                 <h1 className="text-2xl sm:text-3xl font-bold">Admin Dashboard</h1>
               </div>
-              <p className="text-muted-foreground">Manage agents and platform analytics</p>
+              <p className="text-muted-foreground">
+                Manage agents and platform analytics
+              </p>
             </div>
-            
+
             {pendingAgents.length > 0 && (
               <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                 <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
@@ -277,7 +349,9 @@ const AdminDashboard = () => {
                 <h2 className="text-lg font-semibold mb-4">Platform Status</h2>
                 <div className="p-4 bg-green-500/10 rounded-xl border border-green-500/20">
                   <p className="font-medium text-green-600">Free for now</p>
-                  <p className="text-sm text-muted-foreground">No payment integration active</p>
+                  <p className="text-sm text-muted-foreground">
+                    No payment integration active
+                  </p>
                 </div>
               </div>
             </div>
@@ -290,7 +364,7 @@ const AdminDashboard = () => {
                 <BadgeCheck className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">Agent Approval Queue</h2>
               </div>
-              
+
               {pendingAgents.length > 0 ? (
                 <div className="space-y-4">
                   {pendingAgents.map((agent) => (
@@ -298,31 +372,41 @@ const AdminDashboard = () => {
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         <div className="flex items-start gap-4">
                           <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {agent.full_name?.charAt(0) || 'A'}
+                            {agent.full_name?.charAt(0) || "A"}
                           </div>
                           <div>
                             <h3 className="font-semibold">{agent.full_name}</h3>
-                            <p className="text-sm text-primary">{agent.categories?.[0] || 'No category'}</p>
+                            <p className="text-sm text-primary">
+                              {agent.categories?.[0] || "No category"}
+                            </p>
                             <div className="flex flex-wrap items-center gap-2 text-xs mt-2">
-                              <Badge variant={agent.profile_complete ? "default" : "secondary"} className="rounded-lg">
-                                {agent.profile_complete ? "Profile complete" : "Profile incomplete"}
+                              <Badge
+                                variant={
+                                  agent.profile_complete ? "default" : "secondary"
+                                }
+                                className="rounded-lg"
+                              >
+                                {agent.profile_complete
+                                  ? "Profile complete"
+                                  : "Profile incomplete"}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                               <MapPin className="h-3.5 w-3.5" />
-                              {agent.city || agent.state || 'Location not set'}
+                              {agent.city || agent.state || "Location not set"}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
                               Applied: {new Date(agent.created_at).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
-                        
+
                         <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             className="rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
+                            onClick={() => openRejectDialog(agent)}
                           >
                             <X className="h-4 w-4 mr-1" />
                             Reject
@@ -367,7 +451,7 @@ const AdminDashboard = () => {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
+                    <Input
                       placeholder="Search agents..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -382,7 +466,9 @@ const AdminDashboard = () => {
                     <SelectContent className="bg-popover">
                       <SelectItem value="All Categories">All Categories</SelectItem>
                       {AGENT_CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -407,43 +493,69 @@ const AdminDashboard = () => {
                           <td className="p-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
-                                {agent.full_name?.charAt(0) || 'A'}
+                                {agent.full_name?.charAt(0) || "A"}
                               </div>
                               <div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-medium">{agent.full_name}</span>
-                                  {agent.verified && <BadgeCheck className="h-4 w-4 text-primary" />}
-                                  {agent.premium && <Crown className="h-4 w-4 text-amber-500" />}
+                                  {agent.verified && (
+                                    <BadgeCheck className="h-4 w-4 text-primary" />
+                                  )}
+                                  {agent.premium && (
+                                    <Crown className="h-4 w-4 text-amber-500" />
+                                  )}
+                                  {agent.rejected && (
+                                    <Badge variant="destructive" className="ml-2 text-xs">
+                                      Rejected
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="p-4">
-                            <span className="text-sm">{agent.categories?.[0] || 'N/A'}</span>
+                            <span className="text-sm">
+                              {agent.categories?.[0] || "N/A"}
+                            </span>
                           </td>
                           <td className="p-4">
-                            <span className="text-sm text-muted-foreground">{agent.city || agent.state || 'N/A'}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {agent.city || agent.state || "N/A"}
+                            </span>
                           </td>
                           <td className="p-4">
-                            <Badge variant={agent.available ? "default" : "secondary"} className="rounded-lg">
-                              {agent.available ? "Active" : "Inactive"}
-                            </Badge>
+                            {agent.rejected ? (
+                              <Badge variant="destructive" className="rounded-lg">
+                                Rejected
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant={agent.available ? "default" : "secondary"}
+                                className="rounded-lg"
+                              >
+                                {agent.available ? "Active" : "Inactive"}
+                              </Badge>
+                            )}
                           </td>
                           <td className="p-4">
                             <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant={agent.verified ? "outline" : "default"}
                                 className="rounded-lg"
                                 onClick={() => handleVerifyAgent(agent.id, !agent.verified)}
+                                disabled={agent.rejected}
                               >
                                 <BadgeCheck className="h-3.5 w-3.5" />
                               </Button>
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant={agent.premium ? "outline" : "ghost"}
-                                className={`rounded-lg ${agent.premium ? 'text-amber-600' : ''}`}
+                                className={`rounded-lg ${
+                                  agent.premium ? "text-amber-600" : ""
+                                }`}
                                 onClick={() => handleSetPremium(agent.id, !agent.premium)}
+                                disabled={agent.rejected}
                               >
                                 <Crown className="h-3.5 w-3.5" />
                               </Button>
@@ -460,6 +572,54 @@ const AdminDashboard = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Rejection Reason Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Agent</DialogTitle>
+            <DialogDescription>
+              Provide a reason for rejecting {rejectingAgent?.full_name}. This will be
+              recorded for reference.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Rejection Reason *
+              </label>
+              <Textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="e.g., Incomplete documentation, invalid phone number, duplicate account..."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setRejectDialogOpen(false)}
+              disabled={isRejecting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectAgent}
+              disabled={isRejecting || !rejectionReason.trim()}
+            >
+              {isRejecting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <X className="h-4 w-4 mr-2" />
+              )}
+              Reject Agent
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
