@@ -9,7 +9,7 @@ import { Users, Briefcase, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const SelectRole = () => {
-  const { user, role, setUserRole, loading } = useAuth();
+  const { user, role, roleLoading, setUserRole, loading } = useAuth();
   const [selectedRole, setSelectedRole] = useState<'customer' | 'agent' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ const SelectRole = () => {
 
   // Redirect if user already has a role
   useEffect(() => {
-    if (!loading && role) {
+    if (!loading && !roleLoading && role) {
       if (role === 'admin') {
         navigate('/admin', { replace: true });
       } else if (role === 'agent') {
@@ -26,11 +26,11 @@ const SelectRole = () => {
         navigate('/customer-dashboard', { replace: true });
       }
     }
-  }, [role, loading, navigate]);
+  }, [role, loading, roleLoading, navigate]);
 
   const handleRoleSelection = async () => {
     if (!selectedRole || !user) return;
-    
+
     setIsSubmitting(true);
     try {
       await setUserRole(selectedRole);
@@ -38,7 +38,7 @@ const SelectRole = () => {
         title: 'Role selected!',
         description: `You are now registered as a ${selectedRole}`,
       });
-      
+
       if (selectedRole === 'agent') {
         navigate('/agent-dashboard');
       } else {
@@ -55,7 +55,7 @@ const SelectRole = () => {
     }
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -66,15 +66,6 @@ const SelectRole = () => {
   if (!user) {
     navigate('/auth');
     return null;
-  }
-
-  // Show loading while redirecting existing users
-  if (role) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
   }
 
   return (
