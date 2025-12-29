@@ -1,9 +1,134 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Search, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import heroBgDark from "@/assets/hero-bg-dark.jpg";
 
 export function HeroSection() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const animationRef = useRef<number>();
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    let time = 0;
+    let targetX = canvas.width / 2;
+    let targetY = canvas.height / 2;
+    let currentX = targetX;
+    let currentY = targetY;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+
+    const drawWave = () => {
+      if (!ctx || !canvas) return;
+
+      // Smooth follow
+      currentX += (targetX - currentX) * 0.05;
+      currentY += (targetY - currentY) * 0.05;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Create multiple wave layers
+      const waves = [
+        { amplitude: 80, frequency: 0.008, speed: 0.02, opacity: 0.15, offset: 0 },
+        { amplitude: 60, frequency: 0.01, speed: 0.025, opacity: 0.12, offset: 100 },
+        { amplitude: 100, frequency: 0.006, speed: 0.015, opacity: 0.1, offset: 200 },
+      ];
+
+      waves.forEach((wave, index) => {
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, `hsla(200, 100%, 85%, ${wave.opacity})`);
+        gradient.addColorStop(0.5, `hsla(210, 100%, 88%, ${wave.opacity})`);
+        gradient.addColorStop(1, `hsla(195, 100%, 82%, ${wave.opacity})`);
+
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+
+        // Calculate mouse influence
+        const mouseInfluence = 50;
+        const distanceFromCenter = (currentX - canvas.width / 2) / canvas.width;
+
+        for (let x = 0; x <= canvas.width; x += 5) {
+          // Distance from mouse
+          const dx = x - currentX;
+          const dy = canvas.height / 2 - currentY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const mouseEffect = Math.max(0, 1 - distance / 400) * mouseInfluence;
+
+          // Wave calculation with mouse influence
+          const baseY = canvas.height * 0.6 + wave.offset;
+          const waveY = Math.sin(x * wave.frequency + time * wave.speed + index) * wave.amplitude;
+          const mouseWave = Math.sin((x + currentX * 0.1) * 0.01 + time * 0.03) * mouseEffect;
+          const tiltEffect = distanceFromCenter * 30 * (x / canvas.width);
+          
+          const y = baseY + waveY + mouseWave + tiltEffect;
+          ctx.lineTo(x, y);
+        }
+
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      });
+
+      // Draw floating orbs that follow mouse
+      const orbGradient = ctx.createRadialGradient(
+        currentX * 0.3 + canvas.width * 0.2, 
+        currentY * 0.3 + 100, 
+        0,
+        currentX * 0.3 + canvas.width * 0.2, 
+        currentY * 0.3 + 100, 
+        300
+      );
+      orbGradient.addColorStop(0, 'hsla(200, 100%, 90%, 0.3)');
+      orbGradient.addColorStop(1, 'hsla(200, 100%, 90%, 0)');
+      ctx.fillStyle = orbGradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const orbGradient2 = ctx.createRadialGradient(
+        canvas.width - currentX * 0.2, 
+        currentY * 0.4 + 200, 
+        0,
+        canvas.width - currentX * 0.2, 
+        currentY * 0.4 + 200, 
+        250
+      );
+      orbGradient2.addColorStop(0, 'hsla(210, 100%, 88%, 0.25)');
+      orbGradient2.addColorStop(1, 'hsla(210, 100%, 88%, 0)');
+      ctx.fillStyle = orbGradient2;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      time += 1;
+      animationRef.current = requestAnimationFrame(drawWave);
+    };
+
+    drawWave();
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
   return (
     <section className="relative min-h-[100vh] flex items-center overflow-hidden">
       {/* Background for dark mode */}
@@ -14,126 +139,18 @@ export function HeroSection() {
           className="w-full h-full object-cover opacity-30"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/70 to-background" />
-        {/* Animated glow orbs */}
         <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-glow-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/15 rounded-full blur-[100px] animate-glow-pulse" style={{ animationDelay: "1s" }} />
       </div>
 
-      {/* Background for light mode with animated waves */}
-      <div className="absolute inset-0 dark:hidden overflow-hidden">
+      {/* Interactive wave background for light mode */}
+      <div className="absolute inset-0 dark:hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-50 via-white to-white" />
-        
-        {/* Animated wave styles */}
-        <style>{`
-          @keyframes wave-flow-left {
-            0%, 100% { transform: translateX(0) translateY(0); }
-            25% { transform: translateX(10px) translateY(-15px); }
-            50% { transform: translateX(5px) translateY(10px); }
-            75% { transform: translateX(-5px) translateY(-5px); }
-          }
-          @keyframes wave-flow-right {
-            0%, 100% { transform: translateX(0) translateY(0); }
-            25% { transform: translateX(-10px) translateY(10px); }
-            50% { transform: translateX(-5px) translateY(-15px); }
-            75% { transform: translateX(5px) translateY(5px); }
-          }
-          @keyframes wave-pulse {
-            0%, 100% { opacity: 0.5; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.02); }
-          }
-          .wave-left-1 { animation: wave-flow-left 8s ease-in-out infinite; }
-          .wave-left-2 { animation: wave-flow-left 10s ease-in-out infinite 0.5s; }
-          .wave-left-3 { animation: wave-pulse 6s ease-in-out infinite 1s; }
-          .wave-right-1 { animation: wave-flow-right 9s ease-in-out infinite; }
-          .wave-right-2 { animation: wave-flow-right 11s ease-in-out infinite 0.5s; }
-          .wave-right-3 { animation: wave-pulse 7s ease-in-out infinite 0.5s; }
-        `}</style>
-        
-        {/* Left animated waves */}
-        <svg 
-          className="absolute left-0 top-0 h-full w-2/5 opacity-70"
-          viewBox="0 0 400 800" 
-          fill="none" 
-          preserveAspectRatio="none"
-        >
-          <path 
-            className="wave-left-1"
-            d="M-100 0C-100 0 180 150 120 350C60 550 200 800 200 800L-100 800L-100 0Z" 
-            fill="url(#leftWaveGradient1)"
-          />
-          <path 
-            className="wave-left-2"
-            d="M-150 0C-150 0 130 200 70 400C10 600 180 800 180 800L-150 800L-150 0Z" 
-            fill="url(#leftWaveGradient2)"
-            opacity="0.6"
-          />
-          <path 
-            className="wave-left-3"
-            d="M-200 0C-200 0 80 250 30 450C-20 650 150 800 150 800L-200 800L-200 0Z" 
-            fill="url(#leftWaveGradient3)"
-            opacity="0.4"
-          />
-          <defs>
-            <linearGradient id="leftWaveGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="hsl(205 100% 92%)" />
-              <stop offset="50%" stopColor="hsl(195 100% 88%)" />
-              <stop offset="100%" stopColor="hsl(210 100% 94%)" />
-            </linearGradient>
-            <linearGradient id="leftWaveGradient2" x1="0%" y1="20%" x2="100%" y2="80%">
-              <stop offset="0%" stopColor="hsl(200 95% 90%)" />
-              <stop offset="100%" stopColor="hsl(215 100% 93%)" />
-            </linearGradient>
-            <linearGradient id="leftWaveGradient3" x1="0%" y1="40%" x2="100%" y2="60%">
-              <stop offset="0%" stopColor="hsl(195 90% 88%)" />
-              <stop offset="100%" stopColor="hsl(205 100% 92%)" />
-            </linearGradient>
-          </defs>
-        </svg>
-        
-        {/* Right animated waves */}
-        <svg 
-          className="absolute right-0 top-0 h-full w-2/5 opacity-70"
-          viewBox="0 0 400 800" 
-          fill="none" 
-          preserveAspectRatio="none"
-        >
-          <path 
-            className="wave-right-1"
-            d="M500 0C500 0 220 150 280 350C340 550 200 800 200 800L500 800L500 0Z" 
-            fill="url(#rightWaveGradient1)"
-          />
-          <path 
-            className="wave-right-2"
-            d="M550 0C550 0 270 200 330 400C390 600 220 800 220 800L550 800L550 0Z" 
-            fill="url(#rightWaveGradient2)"
-            opacity="0.6"
-          />
-          <path 
-            className="wave-right-3"
-            d="M600 0C600 0 320 250 370 450C420 650 250 800 250 800L600 800L600 0Z" 
-            fill="url(#rightWaveGradient3)"
-            opacity="0.4"
-          />
-          <defs>
-            <linearGradient id="rightWaveGradient1" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="hsl(205 100% 92%)" />
-              <stop offset="50%" stopColor="hsl(195 100% 88%)" />
-              <stop offset="100%" stopColor="hsl(210 100% 94%)" />
-            </linearGradient>
-            <linearGradient id="rightWaveGradient2" x1="100%" y1="20%" x2="0%" y2="80%">
-              <stop offset="0%" stopColor="hsl(200 95% 90%)" />
-              <stop offset="100%" stopColor="hsl(215 100% 93%)" />
-            </linearGradient>
-            <linearGradient id="rightWaveGradient3" x1="100%" y1="40%" x2="0%" y2="60%">
-              <stop offset="0%" stopColor="hsl(195 90% 88%)" />
-              <stop offset="100%" stopColor="hsl(205 100% 92%)" />
-            </linearGradient>
-          </defs>
-        </svg>
-        
-        {/* Soft animated glow orbs */}
-        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-blue-100/50 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-sky-100/40 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full"
+          style={{ pointerEvents: 'none' }}
+        />
       </div>
 
       <div className="container mx-auto px-4 relative z-10 pt-20">
