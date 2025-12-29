@@ -79,12 +79,14 @@ const AdminDashboard = () => {
       
       if (agentsData) {
         setAgents(agentsData);
-        setPendingAgents(agentsData.filter(a => !a.verified && a.profile_complete));
-        
+
+        // Show all unverified agents in the approval queue (even if profile isn't complete yet).
+        setPendingAgents(agentsData.filter((a) => !a.verified));
+
         setStats({
           totalUsers: 0, // Would need to count from auth.users or profiles
           totalAgents: agentsData.length,
-          activeAgents: agentsData.filter(a => a.available).length,
+          activeAgents: agentsData.filter((a) => a.available).length,
           totalCustomers: 0,
         });
       }
@@ -301,7 +303,12 @@ const AdminDashboard = () => {
                           <div>
                             <h3 className="font-semibold">{agent.full_name}</h3>
                             <p className="text-sm text-primary">{agent.categories?.[0] || 'No category'}</p>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <div className="flex flex-wrap items-center gap-2 text-xs mt-2">
+                              <Badge variant={agent.profile_complete ? "default" : "secondary"} className="rounded-lg">
+                                {agent.profile_complete ? "Profile complete" : "Profile incomplete"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                               <MapPin className="h-3.5 w-3.5" />
                               {agent.city || agent.state || 'Location not set'}
                             </div>
@@ -312,27 +319,29 @@ const AdminDashboard = () => {
                         </div>
                         
                         <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
                           >
                             <X className="h-4 w-4 mr-1" />
                             Reject
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             className="rounded-lg"
                             onClick={() => handleVerifyAgent(agent.id, true)}
+                            disabled={!agent.profile_complete}
                           >
                             <Check className="h-4 w-4 mr-1" />
                             Verify
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="rounded-lg border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
                             onClick={() => handleSetPremium(agent.id, true)}
+                            disabled={!agent.profile_complete}
                           >
                             <Crown className="h-4 w-4 mr-1" />
                             Premium

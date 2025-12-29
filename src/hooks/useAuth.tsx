@@ -1,14 +1,15 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
-type AppRole = 'admin' | 'agent' | 'customer';
+export type AppRole = "admin" | "agent" | "customer";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
   loading: boolean;
+  roleLoading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -22,63 +23,82 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(false);
+
+  const computeHighestRole = (roles: AppRole[]) => {
+    if (roles.includes("admin")) return "admin" as const;
+    if (roles.includes("agent")) return "agent" as const;
+    return "customer" as const;
+  };
 
   const fetchUserRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
-    
-    if (data && data.length > 0 && !error) {
-      // Prioritize roles: admin > agent > customer
-      const roles = data.map(d => d.role as AppRole);
-      if (roles.includes('admin')) {
-        setRole('admin');
-      } else if (roles.includes('agent')) {
-        setRole('agent');
-      } else {
-        setRole('customer');
+    setRoleLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      if (error) {
+        setRole(null);
+        return null;
       }
-    } else {
+
+      if (data && data.length > 0) {
+        const roles = data.map((d) => d.role as AppRole);
+        const highest = computeHighestRole(roles);
+        setRole(highest);
+        return highest;
+      }
+
       setRole(null);
+      return null;
+    } finally {
+      setRoleLoading(false);
     }
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Defer role fetch to avoid deadlock
-          setTimeout(() => {
-            fetchUserRole(session.user.id);
-          }, 0);
-        } else {
-          setRole(null);
-        }
-        setLoading(false);
-      }
-    );
+    let mounted = true;
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserRole(session.user.id);
+    const applySession = async (nextSession: Session | null) => {
+      if (!mounted) return;
+
+      setLoading(true);
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.user) {
+        await fetchUserRole(nextSession.user.id);
+      } else {
+        setRole(null);
+        setRoleLoading(false);
       }
-      setLoading(false);
+
+      if (mounted) setLoading(false);
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      // Fire and forget; applySession manages loading state.
+      void applySession(nextSession);
     });
 
-    return () => subscription.unsubscribe();
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => applySession(session));
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/auth/callback`;
-    
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -89,16 +109,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       },
     });
-    
+
     if (error) {
       return { error: error.message };
     }
-    
+
     if (data.user && !data.session) {
       // Email confirmation required
       return { error: null };
     }
-    
+
     return { error: null };
   };
 
@@ -107,11 +127,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password,
     });
-    
+
     if (error) {
       return { error: error.message };
     }
-    
+
     return { error: null };
   };
 
@@ -120,56 +140,75 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setSession(null);
     setRole(null);
+    setRoleLoading(false);
+  };
+
+  const ensureAgentRowExists = async (userId: string) => {
+    const { data: existing, error: existingError } = await supabase
+      .from("agents")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (existingError) return;
+    if (existing) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    await supabase.from("agents").insert({
+      user_id: userId,
+      full_name: profile?.full_name || user?.email?.split("@")[0] || "Agent",
+      available: false,
+      profile_complete: false,
+    });
   };
 
   const setUserRole = async (newRole: AppRole) => {
     if (!user) return;
-    
+
     const { error } = await supabase
-      .from('user_roles')
+      .from("user_roles")
       .insert({ user_id: user.id, role: newRole });
-    
-    if (!error) {
-      setRole(newRole);
-      
-      // If agent, create agent profile
-      if (newRole === 'agent') {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        await supabase.from('agents').insert({
-          user_id: user.id,
-          full_name: profile?.full_name || user.email?.split('@')[0] || 'Agent',
-          available: false,
-          profile_complete: false,
-        });
-      }
+
+    // Ignore duplicate role inserts (unique constraint)
+    if (error && (error as any)?.code !== "23505") {
+      throw error;
     }
+
+    if (newRole === "agent") {
+      await ensureAgentRowExists(user.id);
+    }
+
+    // Always re-fetch to apply role priority (admin > agent > customer)
+    await fetchUserRole(user.id);
   };
 
-  return (
-    <AuthContext.Provider value={{
+  const value = useMemo(
+    () => ({
       user,
       session,
       role,
       loading,
+      roleLoading,
       signUp,
       signIn,
       signOut,
       setUserRole,
-    }}>
-      {children}
-    </AuthContext.Provider>
+    }),
+    [user, session, role, loading, roleLoading]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
