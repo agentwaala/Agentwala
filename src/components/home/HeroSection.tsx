@@ -1,8 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Search, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 export function HeroSection() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
+
+  const handleSearch = () => {
+    navigate(`/agents${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
     <section className="relative min-h-[100vh] flex items-center overflow-hidden">
       {/* Clean gradient background */}
@@ -40,24 +54,31 @@ export function HeroSection() {
             Vehicles, Tours & Travel, and more. Your trusted middleman is just a click away.
           </p>
 
-          {/* Search Bar Style CTA */}
+          {/* Search Bar with Gradient Border */}
           <div className="max-w-2xl mx-auto mb-16 animate-fade-up" style={{ animationDelay: "0.2s" }}>
             <div className="relative group">
-              <div className="relative flex flex-col sm:flex-row gap-3 p-2 bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl">
-                <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-background/50 rounded-xl">
+              {/* Gradient border wrapper */}
+              <div className="absolute -inset-[2px] bg-gradient-to-r from-primary via-sky-400 to-primary rounded-2xl opacity-70 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative flex flex-col sm:flex-row gap-3 p-2 bg-card backdrop-blur-xl rounded-2xl shadow-xl">
+                <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-background rounded-xl border border-border/30">
                   <Search className="h-5 w-5 text-muted-foreground" />
                   <input 
                     type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder="Search for clothes agents, real estate, medicine..."
                     className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
-                <Link to="/agents">
-                  <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base font-semibold">
-                    Find Agents
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button 
+                  size="lg" 
+                  className="w-full sm:w-auto h-12 px-8 text-base font-semibold"
+                  onClick={handleSearch}
+                >
+                  Find Agents
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>

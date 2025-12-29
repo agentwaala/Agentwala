@@ -117,14 +117,16 @@ const locations = ["All Locations", "Maharashtra", "Karnataka", "Delhi", "Tamil 
 
 const Agents = () => {
   const [searchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState("");
+  const initialSearch = searchParams.get("search") || "";
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedDomain, setSelectedDomain] = useState(searchParams.get("domain") || "All Domains");
   const [selectedLocation, setSelectedLocation] = useState("All Locations");
   const [showFilters, setShowFilters] = useState(false);
 
   const filteredAgents = allAgents.filter((agent) => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.description.toLowerCase().includes(searchQuery.toLowerCase());
+      agent.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      agent.domain.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesDomain = selectedDomain === "All Domains" || agent.domain === selectedDomain;
     const matchesLocation = selectedLocation === "All Locations" || agent.location.includes(selectedLocation);
     return matchesSearch && matchesDomain && matchesLocation;
