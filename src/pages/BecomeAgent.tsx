@@ -167,7 +167,7 @@ const BecomeAgent = () => {
       <main className="flex-1">
         <header className="py-12 sm:py-20 border-b border-border/40">
           <div className="container mx-auto px-4 text-center">
-            <Badge className="mb-4">Join 500+ Verified Agents</Badge>
+            {/* <Badge className="mb-4">Join 500+ Verified Agents</Badge> */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">Become an <span className="text-primary">Agent</span></h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Create a complete profile with the correct location so customers can find you easily.

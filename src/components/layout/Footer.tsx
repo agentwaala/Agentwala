@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Twitter, Linkedin, Github } from "lucide-react";
+import { Twitter, Linkedin, Facebook } from "lucide-react";
+import img from "../../../public/logo.png"
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -12,12 +13,12 @@ export function Footer() {
     ],
     Company: [
       { name: "About", path: "/about" },
-      { name: "Blog", path: "/blog" },
-      { name: "Contact", path: "/contact" },
+      { name: "Blog", path: "/Companyabout" },
+      { name: "Contact", path: "/Companyabout" },
     ],
     Legal: [
-      { name: "Privacy", path: "/privacy" },
-      { name: "Terms", path: "/terms" },
+      { name: "Privacy", path: "/Terms&Conditions" },
+      { name: "Terms", path: "/Terms&Conditions" },
     ],
   };
 
@@ -26,20 +27,28 @@ export function Footer() {
       <div className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand Column */}
-          <div className="col-span-2">
+  <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-6">
-              <span className="text-2xl font-bold tracking-tight">
-                Agent<span className="text-primary">waala</span>
-              </span>
+              <img 
+                src={img} 
+                alt="Agentwaala Logo" 
+                className="pl-5 h-8 w-auto scale-[3]"
+              />
             </Link>
             <p className="text-sm text-muted-foreground mb-6 max-w-xs leading-relaxed">
               The trusted marketplace connecting you with verified domain experts across industries.
             </p>
             <div className="flex items-center gap-4">
-              {[Twitter, Linkedin, Github].map((Icon, i) => (
+              {[
+                { Icon: Twitter, url: "https://x.com/agentwaala" },
+                { Icon: Linkedin, url: "https://www.linkedin.com/in/agentwaala" },
+                { Icon: Facebook, url: "https://www.facebook.com/profile.php?id=61585852414482" }
+              ].map(({ Icon, url }, i) => (
                 <a 
                   key={i} 
-                  href="#" 
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                 >
                   <Icon className="h-5 w-5" />

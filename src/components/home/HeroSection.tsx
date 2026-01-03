@@ -1,11 +1,57 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Search, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client"; 
 
 export function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [stats, setStats] = useState({
+    verifiedAgents: 0,
+    categories: 0,
+    totalUsers: 0
+  });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      // Get count of verified agents
+      const { count: verifiedCount } = await supabase
+        .from('agents')
+        .select('*', { count: 'exact', head: true })
+        .eq('verified', true)
+        .eq('profile_complete', true);
+
+      // Get unique categories from verified agents
+      const { data: agentsData } = await supabase
+        .from('agents')
+        .select('categories')
+        .eq('verified', true)
+        .eq('profile_complete', true);
+
+      const uniqueCategories = new Set();
+      agentsData?.forEach(agent => {
+        agent.categories?.forEach((cat: string) => uniqueCategories.add(cat));
+      });
+
+      // Get total users count (approximation based on agents + some multiplier for customers)
+      const { count: totalAgents } = await supabase
+        .from('agents')
+        .select('*', { count: 'exact', head: true });
+
+      setStats({
+        verifiedAgents: verifiedCount || 0,
+        categories: uniqueCategories.size || 0,
+        totalUsers: totalAgents ? totalAgents * 20 : 0 // Rough estimate of total users
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const handleSearch = () => {
     navigate(`/agents${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`);
@@ -33,7 +79,7 @@ export function HeroSection() {
           <div className="flex justify-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium backdrop-blur-sm animate-fade-in">
               <Sparkles className="h-4 w-4" />
-              <span>Trusted by 10,000+ Users Worldwide</span>
+              <span>Trusted by Users Worldwide</span>
             </div>
           </div>
 
@@ -86,9 +132,9 @@ export function HeroSection() {
           {/* Stats */}
           <div className="flex flex-wrap justify-center gap-8 sm:gap-16 animate-fade-up" style={{ animationDelay: "0.3s" }}>
             {[
-              { value: "500+", label: "Verified Agents" },
-              { value: "12+", label: "Categories" },
-              { value: "₹24", label: "Per Call" },
+              { value: `${stats.verifiedAgents}+`, label: "Verified Agents" },
+              { value: `${stats.categories}+`, label: "Categories" },
+              { value: "Free", label: "Per Call" },
             ].map((stat, i) => (
               <div key={i} className="text-center group">
                 <div className="text-3xl sm:text-4xl font-bold text-foreground group-hover:text-primary transition-colors">
@@ -100,11 +146,11 @@ export function HeroSection() {
           </div>
 
           {/* Scroll Indicator */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce hidden md:block">
+          {/* <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce hidden md:block">
             <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-2">
               <div className="w-1 h-2 bg-muted-foreground/50 rounded-full" />
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </section>

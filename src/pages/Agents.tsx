@@ -25,12 +25,15 @@ const domains = [
   "All Domains",
   "Clothes",
   "Real Estate",
+  "flower",
+  "Electronics",
   "Medicine",
   "Fruit",
   "Crop Seeds",
   "Shoes",
   "Beauty Products",
   "Tiles",
+  "Tobacco Agent",
   "Second-hand Vehicles",
   "Tours & Travel",
   "Food & Vegetable",
@@ -38,20 +41,42 @@ const domains = [
 
 const locations = [
   "All Locations",
-  "Maharashtra",
-  "Karnataka",
+  "Andaman and Nicobar Islands",
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chandigarh",
+  "Chhattisgarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
   "Delhi",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jammu and Kashmir",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Ladakh",
+  "Lakshadweep",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Puducherry",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
   "Tamil Nadu",
   "Telangana",
-  "Gujarat",
-  "Rajasthan",
+  "Tripura",
   "Uttar Pradesh",
+  "Uttarakhand",
   "West Bengal",
-  "Kerala",
-  "Madhya Pradesh",
-  "Bihar",
-  "Punjab",
-  "Haryana",
 ];
 
 const Agents = () => {
@@ -71,11 +96,12 @@ const Agents = () => {
     try {
       setLoading(true);
       
-      // Fetch agents with profile_complete = true
+      // Fetch agents with profile_complete = true AND verified = true
       const { data: agentsData, error: agentsError } = await supabase
         .from("agents")
         .select("*")
         .eq("profile_complete", true)
+        .eq("verified", true)
         .order("premium", { ascending: false })
         .order("created_at", { ascending: false });
 

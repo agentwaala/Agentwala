@@ -27,99 +27,348 @@ export const INDIA_STATES = [
   'Uttar Pradesh',
   'Uttarakhand',
   'West Bengal',
-  'Delhi',
+  'Andaman and Nicobar Islands',
   'Chandigarh',
+  'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi',
+  'Jammu and Kashmir',
+  'Ladakh',
+  'Lakshadweep',
   'Puducherry',
 ] as const;
 
 export const STATE_DISTRICTS: Record<string, string[]> = {
   'Maharashtra': [
-    'Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad', 
-    'Solapur', 'Kolhapur', 'Sangli', 'Satara', 'Ahmednagar', 'Raigad'
+    'Mumbai',
+    'Pune',
+    'Nagpur',
+    'Thane',
+    'Nashik',
+    'Aurangabad',
+    'Solapur',
+    'Kolhapur',
+    'Sangli',
+    'Satara',
+    'Ahmednagar',
+    'Raigad'
   ],
   'Karnataka': [
-    'Bengaluru Urban', 'Bengaluru Rural', 'Mysuru', 'Mangaluru', 
-    'Hubballi-Dharwad', 'Belagavi', 'Kalaburagi', 'Ballari'
+    'Bengaluru Urban',
+    'Bengaluru Rural',
+    'Mysuru',
+    'Mangaluru',
+    'Hubballi-Dharwad',
+    'Belagavi',
+    'Kalaburagi',
+    'Ballari'
   ],
   'Tamil Nadu': [
-    'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem',
-    'Tirunelveli', 'Erode', 'Vellore', 'Thoothukudi'
+    'Chennai',
+    'Coimbatore',
+    'Madurai',
+    'Tiruchirappalli',
+    'Salem',
+    'Tirunelveli',
+    'Erode',
+    'Vellore',
+    'Thoothukudi'
   ],
   'Gujarat': [
-    'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar',
-    'Jamnagar', 'Junagadh', 'Gandhinagar', 'Anand'
+    'Ahmedabad',
+    'Surat',
+    'Vadodara',
+    'Rajkot',
+    'Bhavnagar',
+    'Jamnagar',
+    'Junagadh',
+    'Gandhinagar',
+    'Anand'
   ],
   'Rajasthan': [
-    'Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Bikaner',
-    'Alwar', 'Bharatpur', 'Sikar', 'Bhilwara'
+    'Jaipur',
+    'Jodhpur',
+    'Udaipur',
+    'Kota',
+    'Ajmer',
+    'Bikaner',
+    'Alwar',
+    'Bharatpur',
+    'Sikar',
+    'Bhilwara'
   ],
   'Uttar Pradesh': [
-    'Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj', 
-    'Meerut', 'Ghaziabad', 'Noida', 'Bareilly', 'Gorakhpur'
+    'Lucknow',
+    'Kanpur',
+    'Varanasi',
+    'Agra',
+    'Prayagraj',
+    'Meerut',
+    'Ghaziabad',
+    'Noida',
+    'Bareilly',
+    'Gorakhpur'
   ],
   'West Bengal': [
-    'Kolkata', 'Howrah', 'Darjeeling', 'Siliguri', 'Asansol',
-    'Durgapur', 'Bardhaman', 'Malda', 'Kharagpur'
+    'Kolkata',
+    'Howrah',
+    'Darjeeling',
+    'Siliguri',
+    'Asansol',
+    'Durgapur',
+    'Bardhaman',
+    'Malda',
+    'Kharagpur'
   ],
   'Kerala': [
-    'Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 
-    'Kollam', 'Kannur', 'Alappuzha', 'Palakkad', 'Malappuram'
+    'Thiruvananthapuram',
+    'Kochi',
+    'Kozhikode',
+    'Thrissur',
+    'Kollam',
+    'Kannur',
+    'Alappuzha',
+    'Palakkad',
+    'Malappuram'
   ],
   'Telangana': [
-    'Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 
-    'Khammam', 'Mahbubnagar', 'Rangareddy', 'Medak'
+    'Hyderabad',
+    'Warangal',
+    'Nizamabad',
+    'Karimnagar',
+    'Khammam',
+    'Mahbubnagar',
+    'Rangareddy',
+    'Medak'
   ],
   'Andhra Pradesh': [
-    'Visakhapatnam', 'Vijayawada', 'Guntur', 'Tirupati', 
-    'Nellore', 'Kurnool', 'Kakinada', 'Rajahmundry', 'Kadapa'
+    'Visakhapatnam',
+    'Vijayawada',
+    'Guntur',
+    'Tirupati',
+    'Nellore',
+    'Kurnool',
+    'Kakinada',
+    'Rajahmundry',
+    'Kadapa'
   ],
   'Punjab': [
-    'Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda',
-    'Mohali', 'Pathankot', 'Hoshiarpur', 'Moga'
+    'Ludhiana',
+    'Amritsar',
+    'Jalandhar',
+    'Patiala',
+    'Bathinda',
+    'Mohali',
+    'Pathankot',
+    'Hoshiarpur',
+    'Moga'
   ],
   'Haryana': [
-    'Gurugram', 'Faridabad', 'Panipat', 'Ambala', 'Karnal',
-    'Sonipat', 'Rohtak', 'Hisar', 'Yamunanagar'
+    'Gurugram',
+    'Faridabad',
+    'Panipat',
+    'Ambala',
+    'Karnal',
+    'Sonipat',
+    'Rohtak',
+    'Hisar',
+    'Yamunanagar'
   ],
   'Delhi': [
-    'Central Delhi', 'East Delhi', 'New Delhi', 'North Delhi',
-    'North East Delhi', 'North West Delhi', 'South Delhi',
-    'South East Delhi', 'South West Delhi', 'West Delhi'
+    'Central Delhi',
+    'East Delhi',
+    'New Delhi',
+    'North Delhi',
+    'North East Delhi',
+    'North West Delhi',
+    'South Delhi',
+    'South East Delhi',
+    'South West Delhi',
+    'West Delhi'
   ],
   'Bihar': [
-    'Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Darbhanga',
-    'Purnia', 'Bihar Sharif', 'Arrah', 'Begusarai'
+    'Patna',
+    'Gaya',
+    'Bhagalpur',
+    'Muzaffarpur',
+    'Darbhanga',
+    'Purnia',
+    'Bihar Sharif',
+    'Arrah',
+    'Begusarai'
   ],
   'Madhya Pradesh': [
-    'Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain',
-    'Sagar', 'Dewas', 'Satna', 'Rewa'
+    'Bhopal',
+    'Indore',
+    'Jabalpur',
+    'Gwalior',
+    'Ujjain',
+    'Sagar',
+    'Dewas',
+    'Satna',
+    'Rewa'
   ],
   'Jharkhand': [
-    'Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro', 'Hazaribagh',
-    'Deoghar', 'Giridih', 'Ramgarh'
+    'Ranchi',
+    'Jamshedpur',
+    'Dhanbad',
+    'Bokaro',
+    'Hazaribagh',
+    'Deoghar',
+    'Giridih',
+    'Ramgarh'
   ],
   'Chhattisgarh': [
-    'Raipur', 'Bhilai', 'Bilaspur', 'Korba', 'Durg',
-    'Rajnandgaon', 'Jagdalpur', 'Raigarh'
+    'Raipur',
+    'Bhilai',
+    'Bilaspur',
+    'Korba',
+    'Durg',
+    'Rajnandgaon',
+    'Jagdalpur',
+    'Raigarh'
   ],
   'Odisha': [
-    'Bhubaneswar', 'Cuttack', 'Rourkela', 'Brahmapur', 
-    'Sambalpur', 'Puri', 'Balasore', 'Bhadrak'
+    'Bhubaneswar',
+    'Cuttack',
+    'Rourkela',
+    'Brahmapur',
+    'Sambalpur',
+    'Puri',
+    'Balasore',
+    'Bhadrak'
   ],
   'Assam': [
-    'Guwahati', 'Silchar', 'Dibrugarh', 'Jorhat', 'Nagaon',
-    'Tinsukia', 'Tezpur', 'Bongaigaon'
+    'Guwahati',
+    'Silchar',
+    'Dibrugarh',
+    'Jorhat',
+    'Nagaon',
+    'Tinsukia',
+    'Tezpur',
+    'Bongaigaon'
   ],
   'Chandigarh': ['Chandigarh'],
   'Goa': ['North Goa', 'South Goa'],
   'Puducherry': ['Puducherry', 'Karaikal', 'Mahe', 'Yanam'],
   'Himachal Pradesh': [
-    'Shimla', 'Dharamshala', 'Manali', 'Solan', 'Mandi',
-    'Kullu', 'Kangra', 'Una'
+    'Shimla',
+    'Dharamshala',
+    'Manali',
+    'Solan',
+    'Mandi',
+    'Kullu',
+    'Kangra',
+    'Una'
   ],
   'Uttarakhand': [
-    'Dehradun', 'Haridwar', 'Rishikesh', 'Haldwani', 'Roorkee',
-    'Nainital', 'Mussoorie', 'Rudrapur'
+    'Dehradun',
+    'Haridwar',
+    'Rishikesh',
+    'Haldwani',
+    'Roorkee',
+    'Nainital',
+    'Mussoorie',
+    'Rudrapur'
+  ],
+  'Arunachal Pradesh': [
+    'Itanagar',
+    'Naharlagun',
+    'Pasighat',
+    'Tawang',
+    'Ziro',
+    'Bomdila',
+    'Tezu',
+    'Seppa'
+  ],
+  'Sikkim': [
+    'Gangtok',
+    'Namchi',
+    'Gyalshing',
+    'Mangan',
+    'Rangpo',
+    'Jorethang'
+  ],
+  'Tripura': [
+    'Agartala',
+    'Udaipur',
+    'Dharmanagar',
+    'Kailasahar',
+    'Belonia',
+    'Khowai',
+    'Ambassa',
+    'Sabrum'
+  ],
+  'Meghalaya': [
+    'Shillong',
+    'Tura',
+    'Jowai',
+    'Nongstoin',
+    'Williamnagar',
+    'Baghmara',
+    'Resubelpara'
+  ],
+  'Manipur': [
+    'Imphal West',
+    'Imphal East',
+    'Thoubal',
+    'Bishnupur',
+    'Churachandpur',
+    'Ukhrul',
+    'Senapati',
+    'Tamenglong'
+  ],
+  'Mizoram': [
+    'Aizawl',
+    'Lunglei',
+    'Champhai',
+    'Kolasib',
+    'Serchhip',
+    'Mamit',
+    'Lawngtlai',
+    'Saiha'
+  ],
+  'Nagaland': [
+    'Kohima',
+    'Dimapur',
+    'Mokokchung',
+    'Tuensang',
+    'Wokha',
+    'Zunheboto',
+    'Phek',
+    'Mon'
+  ],
+  'Andaman and Nicobar Islands': [
+    'Port Blair',
+    'Car Nicobar',
+    'Diglipur',
+    'Mayabunder',
+    'Rangat'
+  ],
+  'Dadra and Nagar Haveli and Daman and Diu': [
+    'Daman',
+    'Diu',
+    'Silvassa'
+  ],
+  'Jammu and Kashmir': [
+    'Srinagar',
+    'Jammu',
+    'Anantnag',
+    'Baramulla',
+    'Udhampur',
+    'Kathua',
+    'Pulwama',
+    'Budgam'
+  ],
+  'Ladakh': [
+    'Leh',
+    'Kargil'
+  ],
+  'Lakshadweep': [
+    'Kavaratti',
+    'Agatti',
+    'Amini',
+    'Andrott',
+    'Minicoy'
   ],
 };
 
@@ -135,6 +384,8 @@ export const AGENT_CATEGORIES = [
   'Second-hand Vehicles',
   'Tours & Travel',
   'Electronics',
+  "Flower Agent",
+  "Tobacco Agent",
   'Furniture',
   'Jewellery',
   'Home Appliances',

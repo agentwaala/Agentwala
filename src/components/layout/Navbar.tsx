@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Menu, X, User, LogOut, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
+import img from "../../../public/logo.png"
 import { useAuth } from "@/hooks/useAuth";
 import {
   DropdownMenu,
@@ -31,8 +32,10 @@ export function Navbar() {
   const navLinks = [
     { name: "Home", path: "/" },
     { name: "Domains", path: "/domains" },
-    { name: "Find Agents", path: "/agents" },
-    { name: "Become an Agent", path: "/become-agent" },
+    ...(role !== 'agent' ? [{ name: "Find Agents", path: "/agents" }] : []),
+    // This will handle the redirection logic when clicked via a Nav component
+    ...(role === 'customer' ? [{ name: "FAQ", path: "/faq" }] : []),
+    ...(role !== 'customer' && role !== 'admin' && role !== 'agent' ? [{ name: "Become an Agent", path: "/become-agent" }] : []),
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -56,11 +59,13 @@ export function Navbar() {
     }`}>
       <div className="container mx-auto flex h-20 items-center justify-between px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <span className="text-2xl font-bold tracking-tight">
-            Agent<span className="text-primary">waala</span>
-          </span>
-        </Link>
+        <Link to="/" className="flex items-center gap-2 mb-6">
+              <img 
+                src={img} 
+                alt="Agentwaala Logo" 
+                className="pl-3 pt-2 h-8 w-auto scale-[4.5]"
+              />
+            </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-1">
@@ -110,10 +115,10 @@ export function Navbar() {
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       Dashboard
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate(getDashboardPath())}>
+                    {/* <DropdownMenuItem onClick={() => navigate(getDashboardPath())}>
                       <User className="mr-2 h-4 w-4" />
                       Profile
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
