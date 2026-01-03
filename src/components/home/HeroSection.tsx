@@ -76,12 +76,12 @@ export function HeroSection() {
       <div className="container mx-auto px-4 relative z-10 pt-20">
         <div className="max-w-5xl mx-auto">
           {/* Badge */}
-          <div className="flex justify-center mb-8">
+          {/* <div className="flex justify-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium backdrop-blur-sm animate-fade-in">
               <Sparkles className="h-4 w-4" />
               <span>Trusted by Users Worldwide</span>
             </div>
-          </div>
+          </div> */}
 
           {/* Headline */}
           <h1 className="text-center text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 animate-fade-up">

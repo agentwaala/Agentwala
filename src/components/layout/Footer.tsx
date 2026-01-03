@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Twitter, Linkedin, Facebook } from "lucide-react";
+import { Twitter, Linkedin, Facebook , Instagram} from "lucide-react";
 import img from "../../../public/logo.png"
 
 export function Footer() {
@@ -12,13 +12,13 @@ export function Footer() {
       { name: "Domains", path: "/domains" },
     ],
     Company: [
-      { name: "About", path: "/about" },
+      { name: "About us", path: "/about" },
       { name: "Blog", path: "/Companyabout" },
-      { name: "Contact", path: "/Companyabout" },
+      { name: "Contact us", path: "/Companyabout" },
     ],
     Legal: [
-      { name: "Privacy", path: "/Terms&Conditions" },
-      { name: "Terms", path: "/Terms&Conditions" },
+      { name: "Privacy", path: "/privacy" },
+      { name: "Terms", path: "/terms" },
     ],
   };
 
@@ -42,7 +42,9 @@ export function Footer() {
               {[
                 { Icon: Twitter, url: "https://x.com/agentwaala" },
                 { Icon: Linkedin, url: "https://www.linkedin.com/in/agentwaala" },
-                { Icon: Facebook, url: "https://www.facebook.com/profile.php?id=61585852414482" }
+                { Icon: Facebook, url: "https://www.facebook.com/profile.php?id=61585852414482" },
+                { Icon: Instagram, url: "https://www.instagram.com/agentwaala/" },
+
               ].map(({ Icon, url }, i) => (
                 <a 
                   key={i} 

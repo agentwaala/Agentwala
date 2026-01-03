@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import FAQ from "./pages/FAQ";
 import CompanyAbout from "./pages/CompanyAbout";
 import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CeoAbout from "./pages/CeoAbout";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,8 @@ const App = () => (
             <Route path="/agents/:id" element={<AgentProfile />} />
             <Route path="/domains" element={<Domains />} />
             <Route path="/become-agent" element={<BecomeAgent />} />
+            <Route path="/terms" element={<TermsAndConditions />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/Terms&Conditions" element={<TermsAndConditions />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/FAQ" element={<FAQ />} />
