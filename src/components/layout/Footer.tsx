@@ -44,7 +44,6 @@ export function Footer() {
                 { Icon: Linkedin, url: "https://www.linkedin.com/in/agentwaala" },
                 { Icon: Facebook, url: "https://www.facebook.com/profile.php?id=61585852414482" },
                 { Icon: Instagram, url: "https://www.instagram.com/agentwaala/" },
-
               ].map(({ Icon, url }, i) => (
                 <a 
                   key={i} 
@@ -85,8 +84,8 @@ export function Footer() {
             © {currentYear} Agentwaala. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+            {/* <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link> */}
           </div>
         </div>
       </div>
